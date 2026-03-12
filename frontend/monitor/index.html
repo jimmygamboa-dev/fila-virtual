@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html class="dark" lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Monitor de Turnos Multipanel - Fila Virtual</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ffd900",
+                        "background-dark": "#1a180e",
+                        "neutral-dark": "#2d2a1a",
+                        "border-dark": "#403c26",
+                    },
+                    fontFamily: { "display": ["Inter", "sans-serif"] },
+                },
+            },
+        }
+    </script>
+    <script src="https://filavirtual.repuestoshalcon.com/js/config.js?v=2.0"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            background-color: #1a180e;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 48;
+        }
+
+        @keyframes highlight {
+            0% { background-color: rgba(255, 217, 0, 0); }
+            50% { background-color: rgba(255, 217, 0, 0.4); }
+            100% { background-color: rgba(255, 217, 0, 0); }
+        }
+
+        .posicion-highlight {
+            animation: highlight 2s ease-in-out;
+        }
+
+        .big-number {
+            font-size: 28vw;
+            line-height: 0.7;
+            letter-spacing: -0.05em;
+            filter: drop-shadow(0 0 40px rgba(255, 217, 0, 0.3));
+        }
+
+        #audio-overlay {
+            background: rgba(26, 24, 14, 0.98);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+        }
+
+        @keyframes pop-main {
+            0% { transform: scale(1); }
+            30% { transform: scale(1.1); color: #fff; }
+            100% { transform: scale(1); }
+        }
+
+        .main-number-change {
+            animation: pop-main 1s ease-out;
+        }
+
+        .grid-panel {
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        }
+    </style>
+</head>
+
+<body class="bg-background-dark text-slate-100 font-display flex flex-col h-screen">
+
+    <!-- Audio Activation Overlay -->
+    <div id="audio-overlay"
+        class="fixed inset-0 z-[100] flex flex-col items-center justify-center p-8 text-center bg-background-dark/95 backdrop-blur-md"
+        onclick="activateAudio()">
+        <div
+            class="size-24 bg-primary text-background-dark rounded-full flex items-center justify-center mb-6 animate-bounce shadow-2xl shadow-primary/30">
+            <span class="material-symbols-outlined text-5xl">volume_up</span>
+        </div>
+        <h2 class="text-4xl font-black mb-2">Haz clic para activar sonido</h2>
+        <p class="text-slate-400 max-w-md text-lg">Android requiere una interacción manual para permitir que el monitor hable.</p>
+    </div>
+
+    <!-- Sonido de campana empotrado (Base64) -->
+    <audio id="bell-sound" preload="auto">
+        <source src="data:audio/mp3;base64,SUQzBAAAAAABAFRYWFhYAAAADAAAIENvcHlyaWdodAAAWVRYWFgAAAAOAAAIU29mdHdhcmUAX1RYWFgAAAAPAAAIU291cmNlAABUWFhYAAAADAAAIER1cmF0aW9uAABUWFhYAAAACAAAIEdlbnJlAABUWFhYAAAAEAAAIERhdGUgUmVjb3JkZWQA//uQZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAAFAAAAFAAAAP7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+////////////////////////////////////////////////////////////AAAAUExBTUUzLjk5cg68AAAAAAAAAAAABSAkAJQAAGUAAAUgdA3HFAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/uSZDIAAAEYAnQG4AABV6X/S8EACC8zsz8fSADG6oPl5YAIYAmD94MHg8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8LhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLacaD//uSZDAAAEmAnQG4AABV6X/S8EACC86kL8zSADL12ZfVowAIYAmD94MHg8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDw8PDwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFwuFhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhcLhc0AAA" />
+    </audio>
+
+    <div class="flex h-screen overflow-hidden">
+
+        <!-- Left Panel: Large Current Turn -->
+        <div class="w-3/5 flex flex-col border-r border-border-dark/50 relative bg-black/20">
+            <header class="p-8 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="size-14 bg-primary rounded-2xl flex items-center justify-center text-background-dark shadow-lg shadow-primary/20">
+                        <span class="material-symbols-outlined text-4xl">confirmation_number</span>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-black tracking-tighter uppercase leading-none">Fila Virtual</h1>
+                        <p id="sucursal-nombre" class="text-sm font-bold text-slate-500 tracking-widest uppercase mt-1">Cargando sucursal...</p>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Number Content -->
+            <main class="flex-1 flex flex-col items-center justify-center">
+                <div class="text-center">
+                    <h2 id="turno-actual" class="big-number font-black text-primary transition-all duration-300">--</h2>
+                    <p id="ventanilla-actual" class="text-5xl font-black text-slate-400 mt-8 opacity-0 transition-opacity duration-500 uppercase">
+                        POSICIÓN <span id="v-num" class="text-white">--</span></p>
+                </div>
+            </main>
+
+            <footer class="p-6 border-t border-border-dark/50 bg-black/40 flex flex-wrap items-center justify-between gap-6">
+                <div class="flex items-center gap-8">
+                    <p id="clock" class="text-4xl font-mono font-bold text-primary">00:00:00</p>
+                    <div class="h-10 w-px bg-border-dark"></div>
+                    <div class="flex flex-col">
+                        <p class="text-sm font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Estado</p>
+                        <p id="api-status" class="text-emerald-500 font-bold">Online</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col items-end text-right">
+                    <p id="debug-ip" class="text-[10px] font-mono text-slate-500 uppercase mb-1">Detectando IP...</p>
+                    <div id="plan-b-alert" class="hidden bg-amber-500/10 text-amber-500 text-[10px] px-2 py-0.5 rounded border border-amber-500/30 uppercase font-bold">
+                        ⚠️ Modo: Amazon Polly
+                    </div>
+                    <p id="debug-voices" class="text-[10px] font-mono text-slate-400 uppercase">Voces: 0</p>
+                </div>
+            </footer>
+        </div>
+
+        <!-- Right Panel: Ventanilla List (Table Style) -->
+        <div class="w-2/5 flex flex-col bg-neutral-dark/30">
+            <div class="p-8 border-b border-border-dark/50">
+                <h3 class="text-xl font-black text-slate-400 tracking-widest uppercase flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">grid_view</span> OTROS TURNOS
+                </h3>
+            </div>
+            
+            <!-- Table Header -->
+            <div class="px-8 py-4 border-b border-border-dark/30 flex text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
+                <div class="w-1/5 text-center">Posición</div>
+                <div class="w-4/5 text-center">Turno</div>
+            </div>
+
+            <div id="ventanillas-grid" class="flex-1 overflow-y-auto px-4 py-2 flex flex-col gap-1">
+                <div class="p-8 text-center text-slate-500 py-20">Sincronizando...</div>
+            </div>
+        </div>
+
+    </div>
+
+    <div id="debug-log-panel" class="fixed bottom-24 left-10 right-10 bg-black/90 text-lime-400 font-mono text-[10px] p-4 rounded-xl z-[150] max-h-40 overflow-y-auto hidden border border-lime-400/30">
+        <div class="flex justify-between mb-2"><span>DEBUG LOGS</span><button onclick="this.parentElement.parentElement.classList.add('hidden')" class="text-white">CERRAR</button></div>
+        <div id="log-content"></div>
+    </div>
+
+    <!-- Cargar lógica externa -->
+    <script src="monitor.js?v=4.0"></script>
+</body>
+</html>

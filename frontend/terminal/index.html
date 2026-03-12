@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html class="dark" lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport" />
+    <title>Terminal de Turnos - Fila Virtual</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ffd900",
+                        "background-dark": "#1a180e",
+                        "neutral-dark": "#2d2a1a",
+                        "border-dark": "#403c26",
+                    },
+                    fontFamily: { "display": ["Inter", "sans-serif"] },
+                },
+            },
+        }
+    </script>
+    <script src="../js/config.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        .btn-active:active {
+            transform: scale(0.95);
+        }
+
+        @keyframes pulse-primary {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 217, 0, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 20px rgba(255, 217, 0, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 217, 0, 0);
+            }
+        }
+
+        .pulse-btn {
+            animation: pulse-primary 2s infinite;
+        }
+
+        .loader {
+            border: 3px solid rgba(255, 217, 0, 0.1);
+            border-top: 3px solid #ffd900;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-background-dark text-slate-100 font-display transition-colors duration-300">
+
+    <div class="min-h-screen flex flex-col h-full overflow-hidden safe-top safe-bottom">
+
+        <!-- Header -->
+        <header
+            class="p-6 border-b border-border-dark flex items-center justify-between bg-neutral-dark/50 backdrop-blur-md sticky top-0 z-10">
+            <div class="flex items-center gap-3">
+                <div class="size-10 bg-primary/20 rounded-xl flex items-center justify-center">
+                    <span class="material-symbols-outlined text-primary">confirmation_number</span>
+                </div>
+                <div>
+                    <h1 id="vendedor-nombre" class="text-sm font-black truncate max-w-[150px]">Cargando...</h1>
+                    <p id="sucursal-nombre" class="text-[10px] text-slate-500 uppercase tracking-tighter">SUCURSAL —</p>
+                </div>
+            </div>
+            <button onclick="logout()"
+                class="size-10 rounded-full border border-border-dark flex items-center justify-center text-slate-400 hover:text-red-400 transition-colors">
+                <span class="material-symbols-outlined text-sm">logout</span>
+            </button>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col items-center justify-center p-6 space-y-12">
+
+            <!-- Turno Display -->
+            <div class="text-center space-y-2">
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-widest">Turno Actual</p>
+                <div id="turno-container" class="relative">
+                    <h2 id="turno-actual"
+                        class="text-[120px] font-black leading-none text-primary drop-shadow-[0_0_20px_rgba(255,217,0,0.3)]">
+                        --</h2>
+                    <div id="turno-loader"
+                        class="hidden absolute inset-0 flex items-center justify-center bg-background-dark/80">
+                        <div class="loader"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Acciones -->
+            <div class="w-full max-w-sm space-y-6">
+                <!-- Botón Principal -->
+                <button id="btn-siguiente" onclick="incrementarTurno()"
+                    class="w-full bg-primary text-background-dark font-black h-24 rounded-3xl text-2xl shadow-xl shadow-primary/20 flex flex-col items-center justify-center transition-all btn-active pulse-btn">
+                    <span class="material-symbols-outlined text-4xl mb-1">skip_next</span>
+                    SIGUIENTE TURNO
+                </button>
+
+                <!-- Botones Secundarios -->
+                <div class="grid grid-cols-2 gap-4">
+                    <button onclick="rellamarTurno()"
+                        class="bg-neutral-dark border border-border-dark py-4 rounded-2xl flex flex-col items-center gap-1 font-bold text-slate-300 btn-active">
+                        <span class="material-symbols-outlined">campaign</span>
+                        <span class="text-xs">RELLAMAR</span>
+                    </button>
+                    <button onclick="obtenerTurno()"
+                        class="bg-neutral-dark border border-border-dark py-4 rounded-2xl flex flex-col items-center gap-1 font-bold text-slate-300 btn-active">
+                        <span class="material-symbols-outlined">sync</span>
+                        <span class="text-xs">REFRESCAR</span>
+                    </button>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Footer / Status -->
+        <footer class="p-4 text-center border-t border-border-dark bg-neutral-dark/30">
+            <div class="flex items-center justify-center gap-2">
+                <div id="api-status" class="size-2 rounded-full bg-slate-500"></div>
+                <p id="api-status-text" class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                    Conectando al servidor...</p>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast"
+        class="fixed bottom-10 left-6 right-6 translate-y-20 opacity-0 bg-white text-background-dark px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 transition-all duration-300 z-50">
+        <span class="material-symbols-outlined" id="toast-icon">check_circle</span>
+        <p class="font-bold text-sm" id="toast-message"></p>
+    </div>
+
+    <!-- Global Loader Overlay -->
+    <div id="global-loader-overlay"
+        class="hidden fixed inset-0 bg-background-dark/80 backdrop-blur-sm flex flex-col items-center justify-center z-40 transition-all">
+        <span class="material-symbols-outlined text-6xl text-primary animate-spin mb-4">sync</span>
+        <p class="text-primary font-bold tracking-widest text-lg uppercase">PROCESANDO</p>
+    </div>
+
+    <!-- IP Error Overlay (Hidden initially) -->
+    <div id="ip-error-overlay"
+        class="hidden fixed inset-0 bg-red-600 flex flex-col items-center justify-center z-50 text-center p-8 transition-all">
+        <span class="material-symbols-outlined text-6xl text-white mb-4 animate-bounce">gpp_maybe</span>
+        <h2 class="text-2xl font-black text-white leading-tight mb-2">ACCESO<br>RESTRINGIDO</h2>
+        <p class="text-white/90 text-sm font-medium">Usted no se encuentra conectado a la red Wi-Fi de esta sucursal.
+        </p>
+        <p class="text-white/60 text-xs mt-4 font-mono bg-black/20 px-3 py-1 rounded-full">Err: IP_MISMATCH (403)</p>
+    </div>
+
+    <script>
+        const API_URL = window.APP_CONFIG?.API_URL || 'https://c07tv3p9hf.execute-api.us-east-1.amazonaws.com/Prod';
+        const TOKEN_KEY = 'filaVirtualToken';
+        const VENDOR_KEY = 'filaVirtualVendedor';
+
+        let vendedor = null;
+
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = msg;
+            document.getElementById('toast-icon').textContent = type === 'success' ? 'check_circle' : 'error';
+            toast.className = `fixed bottom-10 left-6 right-6 bg-${type === 'success' ? 'emerald-500' : 'red-500'} text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 transition-all duration-300 z-50 opacity-100 translate-y-0`;
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-20');
+                toast.classList.remove('opacity-100', 'translate-y-0');
+            }, 3000);
+        }
+
+        function setStatus(online, msg = '') {
+            const dot = document.getElementById('api-status');
+            const text = document.getElementById('api-status-text');
+            dot.className = `size-2 rounded-full ${online ? 'bg-emerald-500' : 'bg-red-500'}`;
+            text.textContent = msg || (online ? 'Servidor Conectado' : 'Sin Conexión');
+        }
+
+        async function api(method, path, body = null) {
+            const token = localStorage.getItem(TOKEN_KEY);
+            const opts = {
+                method,
+                headers: { 'Content-Type': 'application/json' }
+            };
+            if (token) opts.headers['Authorization'] = `Bearer ${token}`;
+            if (body) opts.body = JSON.stringify(body);
+
+            try {
+                const res = await fetch(`${API_URL}${path}`, opts);
+                // IP Restriction Check
+                if (res.status === 403) {
+                    document.getElementById('ip-error-overlay').classList.remove('hidden');
+                    setStatus(false, 'IP NO AUTORIZADA');
+                    throw new Error('IP no autorizada para esta sucursal');
+                }
+                const json = await res.json();
+                if (!res.ok) throw new Error(json.error || 'Error en el servidor');
+                setStatus(true);
+                return json.data || json;
+            } catch (err) {
+                setStatus(false, err.message);
+                throw err;
+            }
+        }
+
+        async function obtenerTurno() {
+            if (!vendedor) return;
+            document.getElementById('turno-loader').classList.remove('hidden');
+            try {
+                const data = await api('GET', `/turnos/${vendedor.SucursalId}`);
+                document.getElementById('turno-actual').textContent = data.TurnoFormateado;
+            } catch (err) {
+                showToast(err.message, 'error');
+            } finally {
+                document.getElementById('turno-loader').classList.add('hidden');
+            }
+        }
+
+        async function incrementarTurno() {
+            if (!vendedor) return;
+            const btn = document.getElementById('btn-siguiente');
+            btn.disabled = true;
+            document.getElementById('turno-loader').classList.remove('hidden');
+
+            try {
+                const data = await api('POST', `/turnos/${vendedor.SucursalId}/incrementar`);
+                document.getElementById('turno-actual').textContent = data.TurnoFormateado;
+                showToast(`Turno ${data.TurnoFormateado} llamado`);
+
+                // Efecto háptico si aplica
+                if (navigator.vibrate) navigator.vibrate(50);
+
+            } catch (err) {
+                showToast(err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                document.getElementById('turno-loader').classList.add('hidden');
+            }
+        }
+
+        async function rellamarTurno() {
+            const turno = document.getElementById('turno-actual').textContent;
+            if (turno === '--') return;
+
+            const btns = document.querySelectorAll('button');
+            const btn = Array.from(btns).find(b => b.textContent.includes('RELLAMAR'));
+            if (btn) btn.classList.add('opacity-50', 'pointer-events-none');
+
+            if (navigator.vibrate) navigator.vibrate([10, 30, 10]);
+
+            try {
+                await api('POST', `/turnos/${vendedor.SucursalId}/rellamar`);
+                showToast(`Turno ${turno} fue rellamado con éxito.`, 'success');
+            } catch (err) {
+                console.error("Error al rellamar:", err);
+                showToast(err.message || 'Error al rellamar turno', 'error');
+            } finally {
+                if (btn) btn.classList.remove('opacity-50', 'pointer-events-none');
+            }
+        }
+
+        function logout() {
+            if (confirm('¿Cerrar sesión?')) {
+                localStorage.clear();
+                window.location.href = '../auth/login.html';
+            }
+        }
+
+        function main() {
+            const token = localStorage.getItem(TOKEN_KEY);
+            vendedor = JSON.parse(localStorage.getItem(VENDOR_KEY) || 'null');
+
+            if (!token || !vendedor) {
+                window.location.href = '../auth/login.html';
+                return;
+            }
+
+            document.getElementById('vendedor-nombre').textContent = vendedor.Nombre;
+            document.getElementById('sucursal-nombre').textContent = `Sucursal: ${vendedor.SucursalId} • POSICIÓN: ${vendedor.Ventanilla}`;
+
+            obtenerTurno();
+        }
+
+        main();
+    </script>
+</body>
+
+</html>

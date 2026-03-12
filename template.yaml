@@ -1,0 +1,289 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Fila Virtual - Sistema de Gestión de Turnos (SAM)
+
+Globals:
+  Function:
+    Runtime: nodejs18.x
+    Timeout: 30
+    MemorySize: 256
+    Environment:
+      Variables:
+        SUCURSALES_TABLE: !Ref SucursalesTable
+        VENDEDORES_TABLE: !Ref VendedoresTable
+        TURNOS_TABLE: !Ref TurnosTable
+        DYNAMODB_ENDPOINT: "" # Dejar vacío en AWS, se rellena en env.json para local
+        REGION: !Ref AWS::Region
+        FRONTEND_URL: "https://fila-virtual.s3.amazonaws.com"
+        USER_POOL_ID: !Ref FilaVirtualUserPool
+        USER_POOL_CLIENT_ID: !Ref FilaVirtualUserPoolClient
+  Api:
+    Cors:
+      AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+      AllowHeaders: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key'"
+      AllowOrigin: "'*'"
+
+Resources:
+
+  # ─────────────────────────────────────────────
+  # DynamoDB Tables
+  # ─────────────────────────────────────────────
+
+  SucursalesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Sucursales
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: SucursalId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: SucursalId
+          KeyType: HASH
+
+  VendedoresTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Vendedores
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: VendedorId
+          AttributeType: S
+        - AttributeName: SucursalId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: VendedorId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: SucursalIndex
+          KeySchema:
+            - AttributeName: SucursalId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  TurnosTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Turnos
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: SucursalId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: SucursalId
+          KeyType: HASH
+
+
+  # ─────────────────────────────────────────────
+  # Cognito Auth
+  # ─────────────────────────────────────────────
+
+  FilaVirtualUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: FilaVirtual-Users
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true # Solo el admin invita
+        InviteMessageTemplate:
+          EmailMessage: "Bienvenido a Fila Virtual. Tu usuario es {username} y tu contraseña temporal es {####}. Ingresa al sistema para cambiarla."
+          EmailSubject: "Invitación a Fila Virtual"
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      Schema:
+        - Name: sucursalId
+          AttributeDataType: String
+          Mutable: true
+        - Name: ventanilla
+          AttributeDataType: String
+          Mutable: true
+        - Name: role
+          AttributeDataType: String
+          Mutable: true
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          RequireUppercase: true
+
+  FilaVirtualUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: FilaVirtual-WebClient
+      UserPoolId: !Ref FilaVirtualUserPool
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_ADMIN_USER_PASSWORD_AUTH
+      WriteAttributes:
+        - email
+        - name
+        - custom:sucursalId
+        - custom:ventanilla
+        - custom:role
+      ReadAttributes:
+        - email
+        - name
+        - email_verified
+        - custom:sucursalId
+        - custom:ventanilla
+        - custom:role
+      PreventUserExistenceErrors: ENABLED
+
+  # ─────────────────────────────────────────────
+  # Lambda Functions
+  # ─────────────────────────────────────────────
+
+  AdminFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: FilaVirtual-Admin
+      CodeUri: src/
+      Handler: handlers/admin.handler
+      Description: "Gestión de sucursales y vendedores (CRUD + Cognito)"
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SucursalesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref VendedoresTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TurnosTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminCreateUser
+                - cognito-idp:AdminDeleteUser
+                - cognito-idp:AdminGetUser
+                - cognito-idp:AdminUpdateUserAttributes
+              Resource: !GetAtt FilaVirtualUserPool.Arn
+      Events:
+        GetVendedores:
+          Type: Api
+          Properties:
+            Path: /vendedores
+            Method: GET
+        CreateVendedor:
+          Type: Api
+          Properties:
+            Path: /vendedores
+            Method: POST
+        DeleteVendedor:
+          Type: Api
+          Properties:
+            Path: /vendedores/{id}
+            Method: DELETE
+        UpdateVendedor:
+          Type: Api
+          Properties:
+            Path: /vendedores/{id}
+            Method: PUT
+        GenerateSetupLink:
+          Type: Api
+          Properties:
+            Path: /vendedores/{id}/setup-link
+            Method: POST
+        GetSucursales:
+          Type: Api
+          Properties:
+            Path: /sucursales
+            Method: GET
+        IdentificarSucursal:
+          Type: Api
+          Properties:
+            Path: /sucursales/identificar
+            Method: GET
+        CreateSucursal:
+          Type: Api
+          Properties:
+            Path: /sucursales
+            Method: POST
+        UpdateSucursal:
+          Type: Api
+          Properties:
+            Path: /sucursales/{id}
+            Method: PUT
+        DeleteSucursal:
+          Type: Api
+          Properties:
+            Path: /sucursales/{id}
+            Method: DELETE
+
+
+  TurnosFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: FilaVirtual-Turnos
+      CodeUri: src/
+      Handler: handlers/turnos.handler
+      Description: "Manejo de turnos: consulta e incremento atómico"
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TurnosTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref SucursalesTable
+      Events:
+        GetTurno:
+          Type: Api
+          Properties:
+            Path: /turnos/{sucursalId}
+            Method: GET
+        IncrementarTurno:
+          Type: Api
+          Properties:
+            Path: /turnos/{sucursalId}/incrementar
+            Method: POST
+        RellamarTurno:
+          Type: Api
+          Properties:
+            Path: /turnos/{sucursalId}/rellamar
+            Method: POST
+        ResetearTurno:
+          Type: Api
+          Properties:
+            Path: /turnos/{sucursalId}/resetear
+            Method: POST
+        GenerarTurno:
+          Type: Api
+          Properties:
+            Path: /turnos/{sucursalId}/generar
+            Method: POST
+
+  TtsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: FilaVirtual-TTS
+      CodeUri: src/
+      Handler: handlers/tts.handler
+      Description: "Generación de audio para turnos usando Amazon Polly"
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - polly:SynthesizeSpeech
+              Resource: "*"
+      Events:
+        GetTts:
+          Type: Api
+          Properties:
+            Path: /tts
+            Method: GET
+
+Outputs:
+  ApiUrl:
+    Description: "URL del API REST"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+  SucursalesTableName:
+    Value: !Ref SucursalesTable
+  VendedoresTableName:
+    Value: !Ref VendedoresTable
+  TurnosTableName:
+    Value: !Ref TurnosTable
+  UserPoolId:
+    Value: !Ref FilaVirtualUserPool
+  UserPoolClientId:
+    Value: !Ref FilaVirtualUserPoolClient

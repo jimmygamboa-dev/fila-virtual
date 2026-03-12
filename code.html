@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Fila Virtual - Admin Panel</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ffd900",
+                        "background-light": "#f8f8f5",
+                        "background-dark": "#1a180e",
+                        "neutral-dark": "#2d2a1a",
+                        "border-dark": "#403c26",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display">
+<div class="flex h-screen overflow-hidden">
+<!-- Sidebar Navigation -->
+<aside class="w-64 flex-shrink-0 bg-white dark:bg-neutral-dark border-r border-slate-200 dark:border-border-dark flex flex-col">
+<div class="p-6 flex items-center gap-3">
+<div class="size-10 bg-primary rounded-lg flex items-center justify-center text-background-dark">
+<span class="material-symbols-outlined font-bold">confirmation_number</span>
+</div>
+<div>
+<h1 class="text-lg font-bold leading-tight">Fila Virtual</h1>
+<p class="text-xs text-slate-500 dark:text-slate-400">Admin Central</p>
+</div>
+</div>
+<nav class="flex-1 px-4 space-y-2 mt-4">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary/10 text-primary font-medium" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-border-dark transition-colors" href="#">
+<span class="material-symbols-outlined">storefront</span>
+<span>Sucursales</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-border-dark transition-colors" href="#">
+<span class="material-symbols-outlined">badge</span>
+<span>Vendedores</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-border-dark transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span>Configuración</span>
+</a>
+</nav>
+<div class="p-4 border-t border-slate-200 dark:border-border-dark">
+<div class="flex items-center gap-3 p-2">
+<div class="size-8 rounded-full bg-slate-300 dark:bg-slate-700 overflow-hidden">
+<img alt="User Avatar" data-alt="Avatar illustration for admin user" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCAk2WoybVRBba3bOBcW7KbtbBgbjbt5f4N1Xdth1YV3dlMSyFF0wBH52dU251dwZDCWLVMEJwoOt321h1RT7O_sZuB0vKHuExNSZT_nWCsVlOKfQedUhy94CmRz0U_ayP5AxhCCPiVkYnRGhR68ZNAQ1tQlBYx7zevI1vAO074rSg2jP-BTMODa0rG4IUnPnbthlvYoeM5rVvMrswGstd7u9rFDRn6RIZf0uHPumnvm5D26c1ozcCnSWOqFl20aJnsxfTiL-8Yo7XO"/>
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-medium truncate">Admin User</p>
+<p class="text-xs text-slate-500 truncate">admin@reputurno.com</p>
+</div>
+<button class="text-slate-400 hover:text-red-500 transition-colors">
+<span class="material-symbols-outlined text-xl">logout</span>
+</button>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto bg-background-light dark:bg-background-dark p-8">
+<div class="max-w-6xl mx-auto space-y-10">
+<!-- Section Header -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div>
+<h2 class="text-3xl font-black tracking-tight">Gestión de Sucursales</h2>
+<p class="text-slate-500 dark:text-slate-400">Supervisión en tiempo real de terminales y turnos.</p>
+</div>
+<button class="flex items-center gap-2 px-6 py-3 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl font-bold transition-all border border-red-500/20">
+<span class="material-symbols-outlined">refresh</span>
+                        Resetear Todos los Turnos
+                    </button>
+</div>
+<!-- Sucursales Table -->
+<div class="bg-white dark:bg-neutral-dark rounded-xl border border-slate-200 dark:border-border-dark overflow-hidden shadow-sm">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-slate-50 dark:bg-background-dark/50 border-b border-slate-200 dark:border-border-dark">
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Sucursal</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">IP Fija</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-center">Turno Actual</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Estado</th>
+<th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Acciones</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-200 dark:divide-border-dark">
+<tr class="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+<td class="px-6 py-4 font-semibold">Sucursal Central - Microcentro</td>
+<td class="px-6 py-4 text-slate-500 font-mono text-sm">192.168.1.105</td>
+<td class="px-6 py-4 text-center">
+<span class="text-xl font-black text-primary">A-042</span>
+</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
+<span class="size-1.5 rounded-full bg-emerald-500"></span> Online
+                                    </span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-slate-400 hover:text-primary transition-colors px-2">
+<span class="material-symbols-outlined">edit</span>
+</button>
+<button class="text-slate-400 hover:text-red-500 transition-colors px-2">
+<span class="material-symbols-outlined">restart_alt</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+<td class="px-6 py-4 font-semibold">Sucursal Norte - San Isidro</td>
+<td class="px-6 py-4 text-slate-500 font-mono text-sm">186.22.45.12</td>
+<td class="px-6 py-4 text-center">
+<span class="text-xl font-black text-primary">B-015</span>
+</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
+<span class="size-1.5 rounded-full bg-emerald-500"></span> Online
+                                    </span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-slate-400 hover:text-primary transition-colors px-2">
+<span class="material-symbols-outlined">edit</span>
+</button>
+<button class="text-slate-400 hover:text-red-500 transition-colors px-2">
+<span class="material-symbols-outlined">restart_alt</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+<td class="px-6 py-4 font-semibold">Sucursal Sur - Avellaneda</td>
+<td class="px-6 py-4 text-slate-500 font-mono text-sm">201.5.112.89</td>
+<td class="px-6 py-4 text-center">
+<span class="text-xl font-black text-slate-400">--</span>
+</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-400">
+<span class="size-1.5 rounded-full bg-slate-500"></span> Offline
+                                    </span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-slate-400 hover:text-primary transition-colors px-2">
+<span class="material-symbols-outlined">edit</span>
+</button>
+<button class="text-slate-400 hover:text-red-500 transition-colors px-2">
+<span class="material-symbols-outlined">restart_alt</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Gestíon de Vendedores Section -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Form Side -->
+<div class="lg:col-span-1 space-y-6">
+<div class="bg-white dark:bg-neutral-dark p-6 rounded-xl border border-slate-200 dark:border-border-dark shadow-sm">
+<h3 class="text-xl font-bold mb-4">Añadir Vendedor</h3>
+<form class="space-y-4">
+<div>
+<label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Nombre Completo</label>
+<input class="w-full bg-slate-50 dark:bg-background-dark border-slate-200 dark:border-border-dark rounded-lg focus:ring-primary focus:border-primary text-slate-900 dark:text-slate-100" placeholder="Ej. Juan Perez" type="text"/>
+</div>
+<div>
+<label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Correo Electrónico</label>
+<input class="w-full bg-slate-50 dark:bg-background-dark border-slate-200 dark:border-border-dark rounded-lg focus:ring-primary focus:border-primary text-slate-900 dark:text-slate-100" placeholder="juan@reputurno.com" type="email"/>
+</div>
+<div>
+<label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Sucursal Asignada</label>
+<select class="w-full bg-slate-50 dark:bg-background-dark border-slate-200 dark:border-border-dark rounded-lg focus:ring-primary focus:border-primary text-slate-900 dark:text-slate-100">
+<option>Sucursal Central</option>
+<option>Sucursal Norte</option>
+<option>Sucursal Sur</option>
+</select>
+</div>
+<button class="w-full bg-primary hover:bg-primary/90 text-background-dark font-bold py-3 rounded-lg transition-all" type="submit">
+                                    Registrar Vendedor
+                                </button>
+</form>
+</div>
+</div>
+<!-- List Side -->
+<div class="lg:col-span-2">
+<div class="bg-white dark:bg-neutral-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm overflow-hidden">
+<div class="p-6 border-b border-slate-200 dark:border-border-dark">
+<h3 class="text-xl font-bold">Vendedores Registrados</h3>
+</div>
+<div class="divide-y divide-slate-200 dark:divide-border-dark">
+<!-- Seller Item -->
+<div class="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+<div class="flex items-center gap-4">
+<div class="size-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">RM</div>
+<div>
+<p class="font-semibold">Ricardo Mollo</p>
+<p class="text-xs text-slate-500">Sucursal Central • ricardo@repu.com</p>
+</div>
+</div>
+<button class="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary hover:bg-primary hover:text-background-dark rounded-lg text-sm font-bold transition-all">
+<span class="material-symbols-outlined text-sm">link</span>
+                                        Enviar Link
+                                    </button>
+</div>
+<!-- Seller Item -->
+<div class="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+<div class="flex items-center gap-4">
+<div class="size-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">LG</div>
+<div>
+<p class="font-semibold">Leon Gieco</p>
+<p class="text-xs text-slate-500">Sucursal Norte • leon@repu.com</p>
+</div>
+</div>
+<button class="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary hover:bg-primary hover:text-background-dark rounded-lg text-sm font-bold transition-all">
+<span class="material-symbols-outlined text-sm">link</span>
+                                        Enviar Link
+                                    </button>
+</div>
+<!-- Seller Item -->
+<div class="p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+<div class="flex items-center gap-4">
+<div class="size-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">GS</div>
+<div>
+<p class="font-semibold">Gustavo Santaolalla</p>
+<p class="text-xs text-slate-500">Sucursal Sur • gustavo@repu.com</p>
+</div>
+</div>
+<button class="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary hover:bg-primary hover:text-background-dark rounded-lg text-sm font-bold transition-all">
+<span class="material-symbols-outlined text-sm">link</span>
+                                        Enviar Link
+                                    </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Configuración Section -->
+<div class="bg-white dark:bg-neutral-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm overflow-hidden">
+<div class="p-6 border-b border-slate-200 dark:border-border-dark flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">settings_applications</span>
+<h3 class="text-xl font-bold">Configuración de Mensajes</h3>
+</div>
+<div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+<div class="space-y-3">
+<div class="flex items-center justify-between">
+<label class="font-bold text-slate-700 dark:text-slate-300">Mensaje TTS (Texto a Voz)</label>
+<span class="text-xs text-slate-400">Variables: {turno}, {sucursal}</span>
+</div>
+<textarea class="w-full bg-slate-50 dark:bg-background-dark border-slate-200 dark:border-border-dark rounded-xl focus:ring-primary focus:border-primary p-4 text-slate-900 dark:text-slate-100" placeholder="Escribe el mensaje que dictará el sistema..." rows="4">Turno número {turno}, por favor acercarse a ventanilla en la sucursal {sucursal}.</textarea>
+<p class="text-xs text-slate-500 italic">Ejemplo: "Turno número A-042, por favor acercarse..."</p>
+</div>
+<div class="space-y-3">
+<div class="flex items-center justify-between">
+<label class="font-bold text-slate-700 dark:text-slate-300">Mensaje Pie de Ticket</label>
+<span class="text-xs text-slate-400">Límite 120 caracteres</span>
+</div>
+<textarea class="w-full bg-slate-50 dark:bg-background-dark border-slate-200 dark:border-border-dark rounded-xl focus:ring-primary focus:border-primary p-4 text-slate-900 dark:text-slate-100" placeholder="Escribe el mensaje que se imprimirá al final del ticket..." rows="4">Gracias por confiar en Fila Virtual. Tu tiempo es valioso para nosotros. ¡Que tengas un excelente día!</textarea>
+<p class="text-xs text-slate-500 italic text-right">86 / 120</p>
+</div>
+</div>
+<div class="px-8 py-4 bg-slate-50 dark:bg-background-dark/50 flex justify-end">
+<button class="bg-primary hover:bg-primary/90 text-background-dark px-8 py-2.5 rounded-lg font-bold shadow-lg transition-all flex items-center gap-2">
+<span class="material-symbols-outlined">save</span>
+                            Guardar Cambios
+                        </button>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Login Modal Overlay (Hidden by default in a real app, shown here for the prompt) -->
+<!-- Remove 'hidden' class to see the login view -->
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-background-dark/95 backdrop-blur-md hidden">
+<div class="w-full max-w-md p-8 bg-neutral-dark border border-border-dark rounded-2xl shadow-2xl">
+<div class="text-center mb-8">
+<div class="size-16 bg-primary rounded-2xl flex items-center justify-center text-background-dark mx-auto mb-4">
+<span class="material-symbols-outlined text-4xl font-bold">key</span>
+</div>
+<h2 class="text-2xl font-black">Acceso Administrativo</h2>
+<p class="text-slate-400">Ingrese sus credenciales de Cognito</p>
+</div>
+<form class="space-y-6">
+<div class="space-y-1">
+<label class="text-sm font-medium text-slate-400">Correo Electrónico</label>
+<input class="w-full h-14 bg-background-dark border-border-dark rounded-xl focus:ring-primary focus:border-primary text-white" placeholder="admin@reputurno.com" type="email"/>
+</div>
+<div class="space-y-1">
+<label class="text-sm font-medium text-slate-400">Contraseña</label>
+<div class="relative">
+<input class="w-full h-14 bg-background-dark border-border-dark rounded-xl focus:ring-primary focus:border-primary text-white pr-12" placeholder="••••••••" type="password"/>
+<button class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500" type="button">
+<span class="material-symbols-outlined">visibility</span>
+</button>
+</div>
+</div>
+<button class="w-full h-14 bg-primary text-background-dark font-black text-lg rounded-xl hover:scale-[1.02] transition-transform active:scale-100 shadow-[0_0_20px_rgba(255,217,0,0.2)]" type="submit">
+                    Iniciar Sesión
+                </button>
+</form>
+<p class="text-center mt-6 text-sm text-slate-500">
+                © 2024 Fila Virtual Admin. Todos los derechos reservados.
+            </p>
+</div>
+</div>
+</body></html>

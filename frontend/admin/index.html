@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html class="dark" lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>Fila Virtual - Admin Panel</title>
+
+  <!-- Script de Autorización (Proteger Panel Admin) -->
+  <script>
+    function parseJwt(token) {
+      try { return JSON.parse(atob(token.split('.')[1])); }
+      catch (e) { return null; }
+    }
+
+    const _token = localStorage.getItem('filaVirtualToken');
+    if (!_token) {
+      window.location.href = '../auth/login.html';
+    } else {
+      const payload = parseJwt(_token);
+      if (!payload || payload['custom:role'] !== 'admin') {
+        alert('Acceso Denegado: Esta área es exclusiva para Administradores.');
+        window.location.href = '../auth/login.html';
+      }
+    }
+  </script>
+  <script src="../js/config.js"></script>
+
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+    rel="stylesheet" />
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#ffd900",
+            "background-light": "#f8f8f5",
+            "background-dark": "#1a180e",
+            "neutral-dark": "#2d2a1a",
+            "border-dark": "#403c26",
+          },
+          fontFamily: { "display": ["Inter", "sans-serif"] },
+          borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+        },
+      },
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+
+    .toast {
+      animation: slideIn 0.3s ease, fadeOut 0.5s ease 2.5s forwards;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateY(100px);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes fadeOut {
+      from {
+        opacity: 1;
+      }
+
+      to {
+        opacity: 0;
+        pointer-events: none;
+      }
+    }
+
+    .nav-item.active {
+      background: rgba(255, 217, 0, 0.1);
+      color: #ffd900;
+      font-weight: 600;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .link-box {
+      word-break: break-all;
+    }
+
+    .spin {
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      from {
+        transform: rotate(0deg);
+      }
+
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display">
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-6 right-6 z-[100] space-y-3 pointer-events-none"></div>
+
+  <div class="flex h-screen overflow-hidden">
+
+    <!-- ═══ Sidebar ═══════════════════════════════════════════════════════════ -->
+    <aside
+      class="w-64 flex-shrink-0 bg-white dark:bg-neutral-dark border-r border-slate-200 dark:border-border-dark flex flex-col">
+      <div class="p-6 flex items-center gap-3">
+        <div class="size-10 bg-primary rounded-lg flex items-center justify-center text-background-dark">
+          <span class="material-symbols-outlined font-bold">confirmation_number</span>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold leading-tight">Fila Virtual</h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Admin Central</p>
+        </div>
+      </div>
+
+      <nav class="flex-1 px-4 space-y-2 mt-4" id="sidebar-nav">
+        <a class="nav-item active flex items-center gap-3 px-4 py-3 rounded-lg transition-colors cursor-pointer"
+          data-tab="dashboard">
+          <span class="material-symbols-outlined">dashboard</span><span>Dashboard</span>
+        </a>
+        <a class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-border-dark transition-colors cursor-pointer"
+          data-tab="sucursales">
+          <span class="material-symbols-outlined">storefront</span><span>Sucursales</span>
+        </a>
+        <a class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-border-dark transition-colors cursor-pointer"
+          data-tab="vendedores">
+          <span class="material-symbols-outlined">badge</span><span>Vendedores</span>
+        </a>
+        <a class="nav-item flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-border-dark transition-colors cursor-pointer"
+          data-tab="configuracion">
+          <span class="material-symbols-outlined">settings</span><span>Configuración</span>
+        </a>
+      </nav>
+
+      <div class="p-4 border-t border-slate-200 dark:border-border-dark">
+        <div class="flex items-center gap-3 p-2">
+          <div
+            class="size-8 rounded-full bg-primary flex items-center justify-center text-background-dark font-bold text-sm">
+            A</div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium truncate" id="admin-display-name">Admin</p>
+            <p class="text-xs text-slate-500 truncate" id="api-status-label">Conectando...</p>
+          </div>
+          <div class="size-2 rounded-full bg-slate-400" id="api-indicator"></div>
+        </div>
+        <button id="btn-logout" onclick="logoutAdmin()"
+          class="mt-2 w-full flex items-center gap-2 px-3 py-2 rounded-lg text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-sm font-medium">
+          <span class="material-symbols-outlined text-sm">logout</span>
+          Cerrar Sesión
+        </button>
+      </div>
+    </aside>
+
+    <!-- ═══ Main Content ══════════════════════════════════════════════════════ -->
+    <main class="flex-1 overflow-y-auto bg-background-light dark:bg-background-dark p-8">
+      <div class="max-w-6xl mx-auto space-y-10">
+
+        <!-- ── TAB: Dashboard ──────────────────────────────────────────────── -->
+        <div class="tab-content active" id="tab-dashboard">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <div>
+              <h2 class="text-3xl font-black tracking-tight">Dashboard</h2>
+              <p class="text-slate-500 dark:text-slate-400">Supervisión en tiempo real de terminales y turnos.</p>
+            </div>
+            <button id="btn-reset-all"
+              class="flex items-center gap-2 px-6 py-3 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-xl font-bold transition-all border border-red-500/20">
+              <span class="material-symbols-outlined">refresh</span> Resetear Todos los Turnos
+            </button>
+          </div>
+
+          <!-- Stats Cards -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="bg-white dark:bg-neutral-dark rounded-xl p-5 border border-slate-200 dark:border-border-dark">
+              <p class="text-xs font-bold uppercase text-slate-500 mb-1">Sucursales Activas</p>
+              <p class="text-4xl font-black text-primary" id="stat-sucursales">—</p>
+            </div>
+            <div class="bg-white dark:bg-neutral-dark rounded-xl p-5 border border-slate-200 dark:border-border-dark">
+              <p class="text-xs font-bold uppercase text-slate-500 mb-1">Vendedores Activos</p>
+              <p class="text-4xl font-black text-emerald-500" id="stat-vendedores">—</p>
+            </div>
+            <div class="bg-white dark:bg-neutral-dark rounded-xl p-5 border border-slate-200 dark:border-border-dark">
+              <p class="text-xs font-bold uppercase text-slate-500 mb-1">API Local</p>
+              <p class="text-lg font-bold mt-1" id="stat-api">Verificando...</p>
+            </div>
+          </div>
+
+          <!-- Sucursales Table -->
+          <div
+            class="bg-white dark:bg-neutral-dark rounded-xl border border-slate-200 dark:border-border-dark overflow-hidden shadow-sm">
+            <div class="p-6 border-b border-slate-200 dark:border-border-dark flex items-center justify-between">
+              <h3 class="text-xl font-bold">Gestión de Sucursales</h3>
+              <button id="btn-refresh-dashboard"
+                class="text-slate-400 hover:text-primary transition-colors p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-border-dark">
+                <span class="material-symbols-outlined">refresh</span>
+              </button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-slate-50 dark:bg-background-dark/50 border-b border-slate-200 dark:border-border-dark">
+                    <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Sucursal</th>
+                    <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">IP Fija / Límite
+                    </th>
+                    <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-center">Turno
+                      Actual</th>
+                    <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Estado</th>
+                    <th class="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Opciones
+                    </th>
+                  </tr>
+                </thead>
+                <tbody id="sucursales-tbody" class="divide-y divide-slate-200 dark:divide-border-dark">
+                  <tr>
+                    <td colspan="5" class="px-6 py-12 text-center text-slate-400">
+                      <span class="material-symbols-outlined text-4xl block mb-2 spin">sync</span>Cargando sucursales...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── TAB: Sucursales (Gestión) ───────────────────────────────────── -->
+        <div class="tab-content" id="tab-sucursales">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h2 class="text-3xl font-black tracking-tight">Sucursales</h2>
+              <p class="text-slate-500 dark:text-slate-400">Crear y editar sucursales del taller.</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Formulario crear sucursal -->
+            <div class="lg:col-span-1">
+              <div
+                class="bg-white dark:bg-neutral-dark p-6 rounded-xl border border-slate-200 dark:border-border-dark shadow-sm">
+                <h3 class="text-xl font-bold mb-4" id="sucursal-form-title">Nueva Sucursal</h3>
+                <form id="form-sucursal" class="space-y-4">
+                  <input type="hidden" id="suc-id" value="">
+                  <div>
+                    <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Nombre</label>
+                    <input id="suc-nombre"
+                      class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary text-slate-900 dark:text-slate-100"
+                      placeholder="Ej. Sucursal Central" type="text" required />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">IP Fija</label>
+                    <input id="suc-ip"
+                      class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary text-slate-900 dark:text-slate-100 font-mono"
+                      placeholder="192.168.1.100" type="text" />
+                  </div>
+                  <div class="grid grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Prefijo de
+                        Turno</label>
+                      <input id="suc-prefijo"
+                        class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary text-slate-900 dark:text-slate-100 font-mono text-center uppercase"
+                        placeholder="A" maxlength="2" type="text" value="A" required />
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Límite de
+                        Turnos</label>
+                      <input id="suc-limite"
+                        class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary text-slate-900 dark:text-slate-100 font-mono text-center"
+                        placeholder="99" type="number" min="1" max="9999" value="99" required />
+                    </div>
+                  </div>
+                  <div class="flex gap-2">
+                    <button
+                      class="flex-1 bg-primary hover:bg-primary/90 text-background-dark font-bold py-3 rounded-lg transition-all flex items-center justify-center gap-2"
+                      type="submit" id="btn-crear-sucursal">
+                      <span class="material-symbols-outlined" id="suc-btn-icon">add</span> <span id="suc-btn-text">Crear
+                        Sucursal</span>
+                    </button>
+                    <button type="button" id="btn-cancel-edit-suc"
+                      class="hidden px-4 bg-slate-100 dark:bg-border-dark rounded-lg hover:bg-red-500/10 hover:text-red-500 transition-all font-bold">
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <!-- Lista de sucursales -->
+            <div class="lg:col-span-2">
+              <div
+                class="bg-white dark:bg-neutral-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm overflow-hidden">
+                <div class="p-6 border-b border-slate-200 dark:border-border-dark">
+                  <h3 class="text-xl font-bold">Sucursales Registradas</h3>
+                </div>
+                <div id="sucursales-list" class="divide-y divide-slate-200 dark:divide-border-dark">
+                  <div class="p-8 text-center text-slate-400">
+                    <span class="material-symbols-outlined text-4xl block mb-2 spin">sync</span>Cargando...
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── TAB: Vendedores ─────────────────────────────────────────────── -->
+        <div class="tab-content" id="tab-vendedores">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h2 class="text-3xl font-black tracking-tight">Vendedores</h2>
+              <p class="text-slate-500 dark:text-slate-400">Gestión de accesos passwordless para terminales POS.</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Formulario añadir vendedor -->
+            <div class="lg:col-span-1 space-y-6">
+              <div
+                class="bg-white dark:bg-neutral-dark p-6 rounded-xl border border-slate-200 dark:border-border-dark shadow-sm">
+                <h3 id="vendedor-form-title" class="text-xl font-bold mb-4">Nuevo Vendedor</h3>
+                <form id="form-vendedor" class="space-y-6">
+                  <input type="hidden" id="ven-id" value="">
+                  <div>
+                    <label class="block text-sm font-bold text-slate-500 uppercase mb-2">Nombre del Vendedor</label>
+                    <input id="ven-nombre"
+                      class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-lg"
+                      placeholder="Ej: Juan Pérez" type="text" required />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-bold text-slate-500 uppercase mb-2">Correo Electrónico</label>
+                    <input id="ven-email"
+                      class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-lg"
+                      placeholder="vendedor@taller.com" type="email" required />
+                  </div>
+                  <div class="space-y-4">
+                    <div>
+                      <label class="block text-sm font-bold text-slate-500 uppercase mb-2">Rol del Usuario</label>
+                      <select id="ven-rol"
+                        class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary h-14"
+                        required>
+                        <option value="vendedor" selected>Vendedor (Terminal POS)</option>
+                        <option value="admin">Administrador (Panel de Control)</option>
+                      </select>
+                    </div>
+
+                    <div id="ven-ventanilla-container">
+                      <label class="block text-sm font-bold text-slate-500 uppercase mb-2">Número de Posición</label>
+                      <input type="number" id="ven-ventanilla" placeholder="Ej: 1"
+                        class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary h-14"
+                        min="1" value="1">
+                    </div>
+
+                    <div id="sucursal-container">
+                      <label class="block text-sm font-bold text-slate-500 uppercase mb-2">Sucursal Asignada</label>
+                      <select id="ven-sucursal"
+                        class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary h-14">
+                      </select>
+                    </div>
+                  </div>
+                  <div class="flex gap-3">
+                    <button id="btn-crear-vendedor"
+                      class="flex-1 bg-primary hover:bg-primary/90 text-background-dark font-black py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-lg active:scale-95"
+                      type="submit">
+                      <span class="material-symbols-outlined">person_add</span> <span id="ven-btn-text">Registrar
+                        Vendedor</span>
+                    </button>
+                    <button id="btn-cancel-edit-ven"
+                      class="hidden px-6 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold py-4 rounded-xl transition-all flex items-center justify-center active:scale-95"
+                      type="button" title="Cancelar edición">
+                      <span class="material-symbols-outlined">close</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <!-- Info card -->
+              <div class="bg-primary/5 border border-primary/20 rounded-xl p-4 space-y-2">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-primary text-sm">mail</span>
+                  <p class="text-sm font-bold text-primary">Invitación Cognito</p>
+                </div>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Al registrar un vendedor, AWS Cognito le enviará
+                  una invitación por correo con su contraseña temporal. El vendedor deberá iniciar sesión y cambiar su
+                  clave.</p>
+              </div>
+            </div>
+
+            <!-- Lista de vendedores -->
+            <div class="lg:col-span-2">
+              <div
+                class="bg-white dark:bg-neutral-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm overflow-hidden">
+                <div
+                  class="p-6 border-b border-slate-200 dark:border-border-dark flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div class="flex items-center gap-4">
+                    <h3 class="text-xl font-bold">Vendedores Registrados</h3>
+                    <span id="vendedores-count"
+                      class="text-sm bg-slate-100 dark:bg-border-dark px-3 py-1 rounded-full text-slate-500 font-medium">0</span>
+                  </div>
+                  <div>
+                    <select id="filter-vendedores-sucursal"
+                      class="w-full md:w-64 bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary text-sm font-medium">
+                      <option value="">Todas las Sucursales</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-left border-collapse">
+                    <thead>
+                      <tr
+                        class="bg-slate-50 dark:bg-background-dark/50 border-b border-slate-200 dark:border-border-dark">
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase">Vendedor</th>
+                        <th class="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase">Sucursal</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase">Posición</th>
+                        <th class="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody id="vendedores-list" class="divide-y divide-slate-200 dark:divide-border-dark">
+                      <tr class="p-8 text-center text-slate-400">
+                        <td colspan="4" class="px-6 py-12 text-center text-slate-400">
+                          <span class="material-symbols-outlined text-4xl block mb-2 spin">sync</span>Cargando...
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ── TAB: Configuración ──────────────────────────────────────────── -->
+        <div class="tab-content" id="tab-configuracion">
+          <div class="mb-6">
+            <h2 class="text-3xl font-black tracking-tight">Configuración</h2>
+            <p class="text-slate-500 dark:text-slate-400">Mensajes del sistema y parámetros globales.</p>
+          </div>
+
+          <div class="space-y-6">
+            <!-- Mensajes de voz y ticket -->
+            <div
+              class="bg-white dark:bg-neutral-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm overflow-hidden">
+              <div class="p-6 border-b border-slate-200 dark:border-border-dark flex items-center gap-3">
+                <span class="material-symbols-outlined text-primary">settings_applications</span>
+                <h3 class="text-xl font-bold">Configuración de Mensajes</h3>
+              </div>
+              <div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="space-y-3">
+                  <div class="flex items-center justify-between">
+                    <label class="font-bold text-slate-700 dark:text-slate-300">Mensaje TTS (Texto a Voz)</label>
+                    <span class="text-xs text-slate-400">Variables: {turno}, {sucursal}</span>
+                  </div>
+                  <textarea id="cfg-tts"
+                    class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-xl focus:outline-none focus:ring-2 focus:ring-primary p-4 text-slate-900 dark:text-slate-100"
+                    rows="4">Turno número {turno}, por favor acercarse a la posición número {posicion} en la sucursal {sucursal}.</textarea>
+                  <p class="text-xs text-slate-500 italic">Ejemplo: "Turno número A-042, por favor acercarse..."</p>
+                </div>
+                <div class="space-y-3">
+                  <div class="flex items-center justify-between">
+                    <label class="font-bold text-slate-700 dark:text-slate-300">Mensaje Pie de Ticket</label>
+                    <span class="text-xs text-slate-400" id="ticket-chars">86 / 120</span>
+                  </div>
+                  <textarea id="cfg-ticket"
+                    class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-xl focus:outline-none focus:ring-2 focus:ring-primary p-4 text-slate-900 dark:text-slate-100"
+                    rows="4"
+                    maxlength="120">Gracias por confiar en Fila Virtual. Tu tiempo es valioso para nosotros. ¡Que tengas un excelente día!</textarea>
+                  <p class="text-xs text-slate-500 italic text-right" id="ticket-chars-display">86 / 120</p>
+                </div>
+              </div>
+              <div class="px-8 py-4 bg-slate-50 dark:bg-background-dark/50 flex justify-end">
+                <button id="btn-save-config"
+                  class="bg-primary hover:bg-primary/90 text-background-dark px-8 py-2.5 rounded-lg font-bold shadow-lg transition-all flex items-center gap-2">
+                  <span class="material-symbols-outlined">save</span> Guardar Cambios
+                </button>
+              </div>
+            </div>
+
+            <!-- Config API -->
+            <div
+              class="bg-white dark:bg-neutral-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm overflow-hidden">
+              <div class="p-6 border-b border-slate-200 dark:border-border-dark flex items-center gap-3">
+                <span class="material-symbols-outlined text-primary">api</span>
+                <h3 class="text-xl font-bold">Configuración de API</h3>
+              </div>
+              <div class="p-8 space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">URL del API</label>
+                  <div class="flex gap-3">
+                    <input id="cfg-api-url"
+                      class="flex-1 bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      type="url" value="https://c07tv3p9hf.execute-api.us-east-1.amazonaws.com/Prod" />
+                    <button id="btn-test-api"
+                      class="px-4 py-2 bg-slate-100 dark:bg-border-dark hover:bg-primary/20 rounded-lg font-medium text-sm transition-all flex items-center gap-2">
+                      <span class="material-symbols-outlined text-sm">wifi_tethering</span> Probar
+                    </button>
+                  </div>
+                  <p class="text-xs text-slate-400 mt-1">Para producción: URL del API Gateway de AWS</p>
+                </div>
+                <div id="api-test-result" class="hidden p-4 rounded-xl border text-sm font-mono"></div>
+              </div>
+            </div>
+
+            <!-- Config Cognito -->
+            <div
+              class="bg-white dark:bg-neutral-dark rounded-xl border border-slate-200 dark:border-border-dark shadow-sm overflow-hidden">
+              <div class="p-6 border-b border-slate-200 dark:border-border-dark flex items-center gap-3">
+                <span class="material-symbols-outlined text-primary">lock</span>
+                <h3 class="text-xl font-bold">Configuración de Autenticación (Cognito)</h3>
+              </div>
+              <div class="p-8 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">User Pool
+                      ID</label>
+                    <input id="cfg-user-pool-id"
+                      class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      type="text" placeholder="us-east-1_XXXXXXXXX" />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Client ID</label>
+                    <input id="cfg-client-id"
+                      class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-lg px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      type="text" placeholder="XXXXXXXXXXXXXXXXXXXXXXXXXX" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /max-w-6xl -->
+    </main>
+  </div>
+
+  <script>
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CONFIGURACIÓN
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    const CONFIG_KEY = 'filaVirtualConfig';
+
+    function getConfig() {
+      const defaults = {
+        apiUrl: window.APP_CONFIG?.API_URL || 'https://c07tv3p9hf.execute-api.us-east-1.amazonaws.com/Prod',
+        ttsMsg: 'Turno {turno}. Por favor, acercarse a la posición número {posicion}.',
+        ticketMsg: 'Gracias por confiar en Fila Virtual. Tu tiempo es valioso para nosotros. ¡Que tengas un excelente día!',
+        userPoolId: 'us-east-1_KXpf1TsJb',
+        clientId: '6t7oanvcu9b04ijj6l4ptgkdco'
+      };
+      try { return { ...defaults, ...JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}') }; }
+      catch { return defaults; }
+    }
+
+    function saveConfig(cfg) {
+      localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ESTADO GLOBAL
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    let state = {
+      sucursales: [],
+      vendedores: [],
+      loading: false,
+    };
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // API CLIENT
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    async function api(method, path, data = null) {
+      const cfg = getConfig();
+      const url = `${cfg.apiUrl}${path}`;
+      const opts = {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+      };
+      if (data) opts.body = JSON.stringify(data);
+      const res = await fetch(url, opts);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+      return json.data ?? json;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // TOAST NOTIFICATIONS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    function toast(msg, type = 'success') {
+      const colors = {
+        success: 'bg-emerald-500 text-white',
+        error: 'bg-red-500 text-white',
+        info: 'bg-primary text-background-dark',
+        warning: 'bg-amber-500 text-white',
+      };
+      const icons = { success: 'check_circle', error: 'error', info: 'info', warning: 'warning' };
+      const el = document.createElement('div');
+      el.className = `toast flex items-center gap-3 px-5 py-4 rounded-xl shadow-2xl font-medium text-sm max-w-sm pointer-events-auto ${colors[type]}`;
+      el.innerHTML = `<span class="material-symbols-outlined text-lg">${icons[type]}</span><span>${msg}</span>`;
+      document.getElementById('toast-container').appendChild(el);
+      setTimeout(() => el.remove(), 3200);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // NAVEGACIÓN POR TABS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(el => {
+        el.classList.remove('active');
+        el.classList.add('text-slate-600', 'dark:text-slate-400', 'hover:bg-slate-100', 'dark:hover:bg-border-dark');
+      });
+      document.getElementById(`tab-${tabName}`)?.classList.add('active');
+      const navItem = document.querySelector(`[data-tab="${tabName}"]`);
+      if (navItem) {
+        navItem.classList.add('active');
+        navItem.classList.remove('text-slate-600', 'dark:text-slate-400', 'hover:bg-slate-100', 'dark:hover:bg-border-dark');
+      }
+      // Cargar datos según tab
+      if (tabName === 'dashboard') loadDashboard();
+      if (tabName === 'sucursales') loadSucursalesList();
+      if (tabName === 'vendedores') loadVendedores();
+    }
+
+    document.getElementById('sidebar-nav').addEventListener('click', (e) => {
+      const item = e.target.closest('[data-tab]');
+      if (item) switchTab(item.dataset.tab);
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // DASHBOARD
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    async function loadDashboard() {
+      try {
+        const [sucursales, vendedores] = await Promise.all([
+          api('GET', '/sucursales'),
+          api('GET', '/vendedores'),
+        ]);
+        state.sucursales = sucursales;
+        state.vendedores = vendedores;
+
+        // Stats
+        const activas = sucursales.filter(s => s.Estado === 'activa').length;
+        const activosV = vendedores.filter(v => v.Estado === 'activo').length;
+        document.getElementById('stat-sucursales').textContent = activas;
+        document.getElementById('stat-vendedores').textContent = activosV;
+        document.getElementById('stat-api').innerHTML = '<span class="text-emerald-500">🟢 Online</span>';
+
+        setApiIndicator(true);
+
+        // Cargar turnos para cada sucursal
+        const turnosPromises = sucursales.map(s =>
+          api('GET', `/turnos/${s.SucursalId}`).catch(() => null)
+        );
+        const turnos = await Promise.all(turnosPromises);
+        const turnosMap = {};
+        turnos.forEach((t, i) => {
+          if (t) turnosMap[sucursales[i].SucursalId] = t;
+        });
+
+        renderSucursalesTable(sucursales, turnosMap);
+      } catch (err) {
+        setApiIndicator(false);
+        document.getElementById('stat-api').innerHTML = `<span class="text-red-500">🔴 Offline</span>`;
+        document.getElementById('sucursales-tbody').innerHTML = `
+      <tr><td colspan="5" class="px-6 py-12 text-center">
+        <div class="space-y-3">
+          <span class="material-symbols-outlined text-4xl text-red-400 block">wifi_off</span>
+          <p class="font-bold text-red-400">Sin conexión al API</p>
+          <p class="text-sm text-slate-400">${err.message}</p>
+          <p class="text-xs text-slate-500 bg-slate-100 dark:bg-border-dark px-4 py-2 rounded-lg inline-block font-mono">¿Está corriendo SAM local? → sam local start-api</p>
+        </div>
+      </td></tr>`;
+      }
+    }
+
+    function renderSucursalesTable(sucursales, turnosMap) {
+      const tbody = document.getElementById('sucursales-tbody');
+      if (!sucursales.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-slate-400">No hay sucursales registradas</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = sucursales.map(s => {
+        const turno = turnosMap[s.SucursalId];
+        const turnoDisplay = turno ? `<span class="text-xl font-black text-primary">${turno.TurnoFormateado}</span>` : `<span class="text-xl font-black text-slate-400">--</span>`;
+        const estadoBadge = s.Estado === 'activa'
+          ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400"><span class="size-1.5 rounded-full bg-emerald-500"></span>Online</span>`
+          : `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-400"><span class="size-1.5 rounded-full bg-slate-500"></span>Offline</span>`;
+        return `
+      <tr class="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+        <td class="px-6 py-4 font-semibold">${s.Nombre}</td>
+        <td class="px-6 py-4 text-slate-500 font-mono text-sm">${s.IP_Fija || '-'}</td>
+        <td class="px-6 py-4 text-center">${turnoDisplay}</td>
+        <td class="px-6 py-4">${estadoBadge}</td>
+        <td class="px-6 py-4 text-right">
+          <div class="flex items-center justify-end gap-2">
+            <a href="../monitor/index.html?sucursalId=${s.SucursalId}" target="_blank" class="text-slate-400 hover:text-primary transition-colors px-2" title="Ver Monitor">
+              <span class="material-symbols-outlined">desktop_windows</span>
+            </a>
+            <button onclick="resetearTurno('${s.SucursalId}', '${s.Nombre}')" class="text-slate-400 hover:text-red-500 transition-colors px-2" title="Resetear turno">
+              <span class="material-symbols-outlined">restart_alt</span>
+            </button>
+          </div>
+        </td>
+      </tr>`;
+      }).join('');
+    }
+
+    async function resetearTurno(sucursalId, nombre) {
+      if (!confirm(`¿Resetear el turno de "${nombre}" a 0?`)) return;
+      try {
+        await api('POST', `/turnos/${sucursalId}/resetear`);
+        toast(`Turno de "${nombre}" reseteado a 0`, 'success');
+        loadDashboard();
+      } catch (err) {
+        toast(`Error: ${err.message}`, 'error');
+      }
+    }
+
+    document.getElementById('btn-reset-all').addEventListener('click', async () => {
+      if (!confirm('¿Resetear TODOS los turnos a 0? Esta acción no se puede deshacer.')) return;
+      try {
+        const resets = state.sucursales.map(s => api('POST', `/turnos/${s.SucursalId}/resetear`));
+        await Promise.all(resets);
+        toast('Todos los turnos reseteados a 0', 'warning');
+        loadDashboard();
+      } catch (err) {
+        toast(`Error: ${err.message}`, 'error');
+      }
+    });
+
+    document.getElementById('btn-refresh-dashboard').addEventListener('click', loadDashboard);
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SUCURSALES - GESTIÓN
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    async function loadSucursalesList() {
+      try {
+        const sucursales = await api('GET', '/sucursales');
+        state.sucursales = sucursales;
+        renderSucursalesList(sucursales);
+        populateSucursalesSelect(sucursales);
+      } catch (err) {
+        document.getElementById('sucursales-list').innerHTML = `<div class="p-8 text-center text-red-400"><span class="material-symbols-outlined block text-4xl mb-2">wifi_off</span>${err.message}</div>`;
+      }
+    }
+
+    function renderSucursalesList(sucursales) {
+      const container = document.getElementById('sucursales-list');
+      if (!sucursales.length) {
+        container.innerHTML = `<div class="p-8 text-center text-slate-400">No hay sucursales. Crea la primera.</div>`;
+        return;
+      }
+      container.innerHTML = sucursales.map(s => `
+    <div class="p-5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+      <div class="flex items-center gap-4">
+        <div class="size-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary font-black text-lg">${s.Prefijo || 'A'}</div>
+        <div>
+          <p class="font-semibold">${s.Nombre}</p>
+          <p class="text-xs text-slate-500 font-mono">${s.IP_Fija || 'Sin IP fija'} • ${s.Estado}</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick='editarSucursal(${JSON.stringify(s)})' class="text-slate-400 hover:text-primary transition-colors" title="Editar">
+          <span class="material-symbols-outlined text-sm">edit</span>
+        </button>
+        <button onclick="eliminarSucursal('${s.SucursalId}', '${s.Nombre}')" class="text-slate-400 hover:text-red-500 transition-colors" title="Eliminar">
+          <span class="material-symbols-outlined text-sm">delete</span>
+        </button>
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${s.Estado === 'activa' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'}">${s.Estado}</span>
+        <a href="https://monitor.repuestoshalcon.com/?id=${s.SucursalId}" target="_blank" class="flex items-center gap-1 text-xs font-bold text-primary hover:underline">
+          <span class="material-symbols-outlined text-sm">open_in_new</span> MONITOR
+        </a>
+      </div>
+    </div>`).join('');
+    }
+
+    window.editarSucursal = function (s) {
+      document.getElementById('suc-id').value = s.SucursalId;
+      document.getElementById('suc-nombre').value = s.Nombre;
+      document.getElementById('suc-ip').value = s.IP_Fija || '';
+      document.getElementById('suc-prefijo').value = s.Prefijo || 'A';
+      document.getElementById('suc-limite').value = s.LimiteTurnos || 99;
+
+      document.getElementById('sucursal-form-title').innerHTML = 'Editar Sucursal <span class="text-primary">' + s.Prefijo + '</span>';
+      document.getElementById('suc-btn-text').textContent = 'Guardar Cambios';
+      document.getElementById('suc-btn-icon').textContent = 'save';
+      document.getElementById('btn-cancel-edit-suc').classList.remove('hidden');
+      document.getElementById('tab-sucursales').scrollIntoView({ behavior: 'smooth' });
+    };
+
+    window.eliminarSucursal = async function (id, nombre) {
+      if (!confirm(`¿Estás seguro de que deseas eliminar la sucursal "${nombre}"?`)) return;
+      try {
+        await api('DELETE', `/sucursales/${id}`);
+        toast('Sucursal eliminada correctamente', 'success');
+        loadSucursalesList();
+        loadDashboard();
+      } catch (err) {
+        toast(`Error: ${err.message}`, 'error');
+      }
+    };
+
+    document.getElementById('btn-cancel-edit-suc').addEventListener('click', () => {
+      resetSucursalForm();
+    });
+
+    function resetSucursalForm() {
+      const title = document.getElementById('sucursal-form-title');
+      if (title) title.textContent = 'Nueva Sucursal';
+
+      const idInput = document.getElementById('suc-id');
+      if (idInput) idInput.value = '';
+
+      const form = document.getElementById('form-sucursal');
+      if (form) form.reset();
+
+      const prefijo = document.getElementById('suc-prefijo');
+      if (prefijo) prefijo.value = 'A';
+
+      const limite = document.getElementById('suc-limite');
+      if (limite) limite.value = 99; // Set default for new field
+
+      const btnText = document.getElementById('suc-btn-text');
+      if (btnText) btnText.textContent = 'Crear Sucursal';
+
+      const btnIcon = document.getElementById('suc-btn-icon');
+      if (btnIcon) btnIcon.textContent = 'add';
+
+      const cancelBtn = document.getElementById('btn-cancel-edit-suc');
+      if (cancelBtn) cancelBtn.classList.add('hidden');
+    }
+
+    document.getElementById('form-sucursal').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btn-crear-sucursal');
+      const id = document.getElementById('suc-id').value;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="material-symbols-outlined spin" id="suc-btn-icon">sync</span> <span id="suc-btn-text">Guardando...</span>';
+
+      try {
+        const payload = {
+          Nombre: document.getElementById('suc-nombre').value.trim(),
+          IP_Fija: document.getElementById('suc-ip').value.trim(),
+          Prefijo: document.getElementById('suc-prefijo').value.trim() || 'A',
+          LimiteTurnos: parseInt(document.getElementById('suc-limite').value) || 99,
+        };
+
+        if (id) {
+          await api('PUT', `/sucursales/${id}`, payload);
+          toast('Sucursal actualizada correctamente', 'success');
+        } else {
+          await api('POST', '/sucursales', payload);
+          toast('Sucursal creada correctamente', 'success');
+        }
+
+        resetSucursalForm();
+        loadSucursalesList();
+        loadDashboard();
+      } catch (err) {
+        toast(`Error: ${err.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<span class="material-symbols-outlined" id="suc-btn-icon">${id ? 'save' : 'add'}</span> <span id="suc-btn-text">${id ? 'Guardar Cambios' : 'Crear Sucursal'}</span>`;
+      }
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // VENDEDORES
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    async function loadVendedores() {
+      try {
+        const [vendedores, sucursales] = await Promise.all([
+          api('GET', '/vendedores'),
+          api('GET', '/sucursales'),
+        ]);
+        state.vendedores = vendedores;
+        state.sucursales = sucursales;
+        renderVendedoresList(vendedores);
+        populateSucursalesSelect(sucursales);
+        // El count se actualiza dentro de renderVendedoresList ahora
+      } catch (err) {
+        document.getElementById('vendedores-list').innerHTML = `<tr class="p-8 text-center text-red-400"><td colspan="4" class="px-6 py-12 text-center text-red-400"><span class="material-symbols-outlined block text-4xl mb-2">wifi_off</span>${err.message}</td></tr>`;
+      }
+    }
+
+    function renderVendedoresList(vendedores, sucursalFilter = '') {
+      const container = document.getElementById('vendedores-list');
+
+      let filtered = vendedores;
+      if (sucursalFilter) {
+        filtered = vendedores.filter(v => v.SucursalId === sucursalFilter);
+      }
+
+      document.getElementById('vendedores-count').textContent = `${filtered.length} registrados`;
+
+      if (!filtered.length) {
+        container.innerHTML = `<tr class="p-8 text-center text-slate-400"><td colspan="4" class="px-6 py-12 text-center text-slate-400">No hay vendedores para esta sucursal.</td></tr>`;
+        return;
+      }
+      container.innerHTML = filtered.map(v => {
+        const iniciales = v.Nombre.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+        const sucursalNombre = v.Sucursal?.Nombre || v.SucursalId;
+        const estadoColor = {
+          'activo': 'text-emerald-500',
+          'pendiente_setup': 'text-amber-500',
+          'inactivo': 'text-slate-400',
+        }[v.Estado] || 'text-slate-400';
+        return `
+      <tr class="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors" id="ven-row-${v.VendedorId}">
+        <td class="px-6 py-4">
+          <div class="flex items-center gap-3">
+            <div class="size-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm">${iniciales}</div>
+            <div>
+              <p class="font-semibold">${v.Nombre}</p>
+              <p class="text-xs text-slate-500">${v.Email}</p>
+            </div>
+          </div>
+        </td>
+        <td class="px-6 py-4 text-slate-500 text-sm">${sucursalNombre}</td>
+        <td class="px-6 py-4 text-center">
+            <span class="px-3 py-1 bg-primary/10 text-primary border border-primary/20 rounded-lg font-black text-xs">${v.Ventanilla || '1'}</span>
+        </td>
+        <td class="px-6 py-4 text-center">
+          <div class="flex items-center justify-end gap-2">
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${estadoColor}">${v.Estado.replace('_', ' ')}</span>
+            <button data-vendedorid="${v.VendedorId}" class="btn-editar-vendedor text-slate-400 hover:text-primary transition-colors p-2 rounded-lg hover:bg-primary/10">
+              <span class="material-symbols-outlined text-sm">edit</span>
+            </button>
+            <button onclick="eliminarVendedor('${v.VendedorId}', '${v.Nombre}')" class="text-slate-400 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20">
+              <span class="material-symbols-outlined text-sm">delete</span>
+            </button>
+          </div>
+        </td>
+      </tr>`;
+      }).join('');
+
+      // Event delegation: click en cualquier botón de editar dentro de la lista
+      container.querySelectorAll('.btn-editar-vendedor').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const vid = btn.getAttribute('data-vendedorid');
+          const vendedor = state.vendedores.find(v => v.VendedorId === vid);
+          if (vendedor) editarVendedor(vendedor);
+        });
+      });
+    }
+
+    function populateSucursalesSelect(sucursales) {
+      const formSelect = document.getElementById('ven-sucursal');
+      const filterSelect = document.getElementById('filter-vendedores-sucursal');
+
+      const options = sucursales.map(s => `<option value="${s.SucursalId}">${s.Nombre}</option>`).join('');
+
+      formSelect.innerHTML = sucursales.length
+        ? '<option value="">Selecciona una sucursal...</option>' + options
+        : '<option value="">No hay sucursales disponibles</option>';
+
+      // Mantener la opción de "Todas" en el filtro
+      const currentValue = filterSelect.value;
+      filterSelect.innerHTML = '<option value="">Todas las Sucursales</option>' + (sucursales.length ? options : '');
+      filterSelect.value = currentValue || ''; // Restaurar la selección si existía
+    }
+
+    // Event listener para mostrar/ocultar el combo de sucursal según el rol
+    document.getElementById('ven-rol').addEventListener('change', (e) => {
+      const isVendedor = e.target.value === 'vendedor';
+      const sucursalContainer = document.getElementById('sucursal-container');
+      const sucursalSelect = document.getElementById('ven-sucursal');
+      if (isVendedor) {
+        sucursalContainer.classList.remove('hidden');
+        sucursalSelect.required = true;
+      } else {
+        sucursalContainer.classList.add('hidden');
+        sucursalSelect.required = false;
+      }
+    });
+
+    // Event listener para el filtro
+    document.getElementById('filter-vendedores-sucursal').addEventListener('change', (e) => {
+      renderVendedoresList(state.vendedores, e.target.value);
+    });
+
+    window.editarVendedor = function (v) {
+      document.getElementById('ven-id').value = v.VendedorId;
+      document.getElementById('ven-nombre').value = v.Nombre;
+      document.getElementById('ven-email').value = v.Email;
+      document.getElementById('ven-email').disabled = true;
+      document.getElementById('ven-rol').value = v.Role;
+      document.getElementById('ven-sucursal').value = v.SucursalId || '';
+      document.getElementById('ven-ventanilla').value = v.Ventanilla || '1';
+
+      if (v.Role === 'vendedor') {
+        document.getElementById('sucursal-container').classList.remove('hidden');
+        document.getElementById('ven-ventanilla-container').classList.remove('hidden');
+        document.getElementById('ven-sucursal').required = true;
+      } else {
+        document.getElementById('sucursal-container').classList.add('hidden');
+        document.getElementById('ven-ventanilla-container').classList.add('hidden');
+        document.getElementById('ven-sucursal').required = false;
+      }
+
+      document.getElementById('vendedor-form-title').innerHTML = 'Editar: <span class="text-primary">' + v.Nombre + '</span>';
+      document.getElementById('btn-cancel-edit-ven').classList.remove('hidden');
+      // Actualizar texto del botón directamente
+      document.getElementById('btn-crear-vendedor').innerHTML = '<span class="material-symbols-outlined">save</span> <span id="ven-btn-text">Guardar Cambios</span>';
+      document.getElementById('tab-vendedores').scrollIntoView({ behavior: 'smooth' });
+    };
+
+    window.resetVendedorForm = function () {
+      document.getElementById('vendedor-form-title').textContent = 'Nuevo Vendedor';
+      document.getElementById('ven-id').value = '';
+      document.getElementById('ven-email').disabled = false;
+      document.getElementById('form-vendedor').reset();
+      // Restaurar botón directamente en lugar de depender del span interior
+      document.getElementById('btn-crear-vendedor').innerHTML = '<span class="material-symbols-outlined">person_add</span> <span id="ven-btn-text">Registrar Vendedor</span>';
+      document.getElementById('btn-cancel-edit-ven').classList.add('hidden');
+      document.getElementById('sucursal-container').classList.remove('hidden');
+      document.getElementById('ven-ventanilla-container').classList.remove('hidden');
+      document.getElementById('ven-rol').value = 'vendedor';
+    };
+
+    document.getElementById('btn-cancel-edit-ven').addEventListener('click', () => {
+      resetVendedorForm();
+    });
+
+    document.getElementById('form-vendedor').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btn-crear-vendedor');
+      const id = document.getElementById('ven-id').value;
+      const rol = document.getElementById('ven-rol').value;
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="material-symbols-outlined spin">sync</span> Procesando...';
+
+      try {
+        const payload = {
+          Nombre: document.getElementById('ven-nombre').value.trim(),
+          Email: document.getElementById('ven-email').value.trim(),
+          Rol: rol,
+          SucursalId: document.getElementById('ven-sucursal').value,
+          Ventanilla: document.getElementById('ven-ventanilla').value || '1'
+        };
+
+        if (id) {
+          // Edición
+          await api('PUT', `/vendedores/${id}`, {
+            Nombre: payload.Nombre,
+            SucursalId: payload.SucursalId,
+            Ventanilla: payload.Ventanilla
+          });
+          toast('Vendedor actualizado exitosamente', 'success');
+        } else {
+          // Creación
+          const nuevo = await api('POST', '/vendedores', payload);
+          toast(`Vendedor "${nuevo.Nombre}" registrado exitosamente`, 'success');
+        }
+
+        resetVendedorForm();
+        loadVendedores();
+      } catch (err) {
+        toast(`Error: ${err.message}`, 'error');
+      } finally {
+        btn.disabled = false;
+        // Si fuimos exitosos, resetVendedorForm ya restableció el botón.
+        // El finally solo garantiza que el botón no quede deshabilitado en caso de error.
+        if (btn.disabled === false && !document.getElementById('ven-btn-text')) {
+          // Si el formulario no fue reseteado (hubo error), restaurar el botón
+          btn.innerHTML = `<span class="material-symbols-outlined">${id ? 'save' : 'person_add'}</span> <span id="ven-btn-text">${id ? 'Guardar Cambios' : 'Registrar Vendedor'}</span>`;
+        }
+      }
+    });
+
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // CONFIGURACIÓN
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    function initConfig() {
+      const cfg = getConfig();
+      document.getElementById('cfg-api-url').value = cfg.apiUrl;
+      document.getElementById('cfg-tts').value = cfg.ttsMsg;
+      document.getElementById('cfg-ticket').value = cfg.ticketMsg;
+      document.getElementById('cfg-user-pool-id').value = cfg.userPoolId || '';
+      document.getElementById('cfg-client-id').value = cfg.clientId || '';
+      updateTicketChars();
+    }
+
+    function updateTicketChars() {
+      const val = document.getElementById('cfg-ticket').value;
+      document.getElementById('ticket-chars-display').textContent = `${val.length} / 120`;
+    }
+
+    document.getElementById('cfg-ticket').addEventListener('input', updateTicketChars);
+
+    async function eliminarVendedor(vendedorId, nombre) {
+      if (!confirm(`¿Eliminar al vendedor "${nombre}"? Esta acción no se puede deshacer.`)) return;
+      try {
+        await api('DELETE', `/vendedores/${vendedorId}`);
+        toast(`Vendedor "${nombre}" eliminado`, 'warning');
+        loadVendedores();
+      } catch (err) {
+        toast(`Error: ${err.message}`, 'error');
+      }
+    }
+
+    document.getElementById('btn-save-config').addEventListener('click', () => {
+      const cfg = {
+        apiUrl: document.getElementById('cfg-api-url').value.trim(),
+        ttsMsg: document.getElementById('cfg-tts').value.trim(),
+        ticketMsg: document.getElementById('cfg-ticket').value.trim(),
+        userPoolId: document.getElementById('cfg-user-pool-id').value.trim(),
+        clientId: document.getElementById('cfg-client-id').value.trim(),
+      };
+      saveConfig(cfg);
+      toast('Configuración guardada', 'success');
+    });
+
+    document.getElementById('btn-test-api').addEventListener('click', async () => {
+      const url = document.getElementById('cfg-api-url').value.trim();
+      const resultEl = document.getElementById('api-test-result');
+      resultEl.classList.remove('hidden');
+      resultEl.className = 'p-4 rounded-xl border text-sm font-mono bg-slate-50 dark:bg-background-dark border-slate-200 dark:border-border-dark';
+      resultEl.textContent = '⏳ Probando conexión...';
+      try {
+        const res = await fetch(`${url}/sucursales`);
+        const json = await res.json();
+        resultEl.className = 'p-4 rounded-xl border text-sm font-mono bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400';
+        resultEl.textContent = `✅ Conexión exitosa → ${JSON.stringify(json).substring(0, 100)}...`;
+        setApiIndicator(true);
+      } catch (err) {
+        resultEl.className = 'p-4 rounded-xl border text-sm font-mono bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400';
+        resultEl.textContent = `❌ Error: ${err.message}`;
+        setApiIndicator(false);
+      }
+    });
+
+    function setApiIndicator(online) {
+      const dot = document.getElementById('api-indicator');
+      const label = document.getElementById('api-status-label');
+      if (online) {
+        dot.className = 'size-2 rounded-full bg-emerald-500';
+        label.textContent = 'API Online';
+      } else {
+        dot.className = 'size-2 rounded-full bg-red-500';
+        label.textContent = 'API Offline';
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // INIT
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    initConfig();
+    loadDashboard();
+  </script>
+</body>
+
+</html>

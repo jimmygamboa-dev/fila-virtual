@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Kiosco de Turnos - Fila Virtual</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ffd900",
+                        "background-dark": "#1a180e",
+                        "neutral-dark": "#2d2a1a",
+                    },
+                    fontFamily: { "display": ["Inter", "sans-serif"] },
+                },
+            },
+        }
+    </script>
+    <script src="../js/config.js?v=2.0"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #1a180e; overflow: hidden; }
+        
+        /* Estilos de Impresión Térmica */
+        @media print {
+            body { background: white; color: black; overflow: visible; }
+            #main-ui { display: none !important; }
+            #ticket-print { 
+                display: block !important; 
+                width: 58mm; /* Tamaño estándar PDA térmica */
+                margin: 0;
+                padding: 5mm;
+                text-align: center;
+                font-family: 'Courier New', Courier, monospace;
+            }
+            .no-print { display: none !important; }
+        }
+
+        #ticket-print { display: none; }
+
+        .kiosk-button {
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 20px rgba(255,217,0,0.2);
+        }
+        .kiosk-button:active { transform: scale(0.92); box-shadow: 0 5px 15px rgba(0,0,0,0.4); }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.5; }
+            50% { transform: scale(1.05); opacity: 0.3; }
+            100% { transform: scale(0.95); opacity: 0.5; }
+        }
+        .pulse-effect { animation: pulse-ring 2s infinite ease-in-out; }
+    </style>
+</head>
+<body class="text-slate-100 font-display min-h-screen flex flex-col items-center justify-center p-6">
+
+    <div id="main-ui" class="w-full max-w-md text-center">
+        <!-- Error Overlay (IP restricted) -->
+        <div id="ip-error" class="hidden fixed inset-0 z-50 bg-red-600 flex flex-col items-center justify-center p-8 text-center">
+            <span class="material-symbols-outlined text-[100px] mb-6">gpp_maybe</span>
+            <h1 class="text-3xl font-black mb-4 uppercase">Acceso Denegado</h1>
+            <p class="text-lg opacity-90">Esta PDA no está autorizada en esta red.</p>
+        </div>
+
+        <!-- Header -->
+        <header class="mb-12">
+            <div class="inline-flex items-center gap-3 bg-neutral-dark/50 px-6 py-3 rounded-2xl border border-white/5 backdrop-blur-sm mb-6">
+                <div class="size-10 bg-primary rounded-xl flex items-center justify-center text-background-dark shadow-lg shadow-primary/20">
+                    <span class="material-symbols-outlined text-2xl font-black">confirmation_number</span>
+                </div>
+                <div class="text-left">
+                    <h1 class="text-xl font-black tracking-tighter uppercase leading-none">Fila Virtual</h1>
+                    <p id="sucursal-nombre" class="text-[10px] font-bold text-slate-500 tracking-widest uppercase">Identificando...</p>
+                </div>
+            </div>
+            <h2 class="text-4xl font-black mb-4">Bienvenido</h2>
+            <p class="text-slate-400">Presione el botón para obtener su turno e imprima su ticket.</p>
+        </header>
+
+        <!-- Main Action -->
+        <div class="relative group">
+            <div class="absolute inset-0 bg-primary/20 blur-3xl rounded-full pulse-effect group-hover:bg-primary/30 transition-all"></div>
+            <button onclick="generarTurno()" id="btn-generar" class="kiosk-button relative w-64 h-64 bg-primary text-background-dark rounded-full flex flex-col items-center justify-center gap-2 border-8 border-background-dark z-10 mx-auto">
+                <span class="material-symbols-outlined text-7xl">print</span>
+                <span class="text-2xl font-black uppercase tracking-tight">Obtener<br>Ficha</span>
+            </button>
+        </div>
+
+        <footer class="mt-16 text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">
+            Sistema Fila Virtual © 2024
+        </footer>
+    </div>
+
+    <!-- Ticket Invisible para Impresión -->
+    <div id="ticket-print">
+        <h2 style="font-size: 20px; margin-bottom: 5px;">FILA VIRTUAL</h2>
+        <p id="print-sucursal" style="font-size: 14px; margin-bottom: 20px;">SUCURSAL</p>
+        <div style="border-top: 1px dashed black; border-bottom: 1px dashed black; padding: 15px 0; margin-bottom: 15px;">
+            <p style="font-size: 12px; margin: 0;">SU TURNO ES:</p>
+            <h1 id="print-turno" style="font-size: 48px; margin: 10px 0; font-weight: bold;">--</h1>
+        </div>
+        <p id="print-fecha" style="font-size: 10px;"></p>
+        <p style="font-size: 10px; margin-top: 10px;">Por favor espere a ser llamado<br>en la pantalla de anuncios.</p>
+        <p style="font-size: 8px; margin-top: 20px; opacity: 0.5;">Fila Virtual v4.0</p>
+    </div>
+
+    <script>
+        const API_URL = window.APP_CONFIG?.API_URL || 'https://c07tv3p9hf.execute-api.us-east-1.amazonaws.com/Prod';
+        let sucursalId = null;
+
+        // Identificar sucursal por IP al cargar
+        async function identificar() {
+            try {
+                const res = await fetch(`${API_URL}/sucursales/identificar`);
+                const json = await res.json();
+                if (json.success && json.data.SucursalId) {
+                    sucursalId = json.data.SucursalId;
+                    document.getElementById('sucursal-nombre').textContent = json.data.Nombre;
+                    document.getElementById('print-sucursal').textContent = json.data.Nombre;
+                } else {
+                    document.getElementById('ip-error').classList.remove('hidden');
+                }
+            } catch (err) {
+                console.error("Error identificación:", err);
+                document.getElementById('ip-error').classList.remove('hidden');
+            }
+        }
+
+        async function generarTurno() {
+            if (!sucursalId) return;
+            const btn = document.getElementById('btn-generar');
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'animate-pulse');
+
+            try {
+                const res = await fetch(`${API_URL}/turnos/${sucursalId}/generar`, {
+                    method: 'POST'
+                });
+                const json = await res.json();
+                
+                if (json.success) {
+                    const data = json.data;
+                    document.getElementById('print-turno').textContent = data.Ticket;
+                    document.getElementById('print-fecha').textContent = new Date().toLocaleString();
+                    
+                    // Disparar impresión
+                    setTimeout(() => {
+                        window.print();
+                        btn.disabled = false;
+                        btn.classList.remove('opacity-50', 'animate-pulse');
+                    }, 500);
+                } else {
+                    alert("Error: " + json.error);
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'animate-pulse');
+                }
+            } catch (err) {
+                alert("Error de conexión");
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'animate-pulse');
+            }
+        }
+
+        window.onload = identificar;
+    </script>
+</body>
+</html>
