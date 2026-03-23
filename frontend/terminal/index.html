@@ -85,11 +85,9 @@
 
         <!-- Header -->
         <header
-            class="p-6 border-b border-border-dark flex items-center justify-between bg-neutral-dark/50 backdrop-blur-md sticky top-0 z-10">
-            <div class="flex items-center gap-3">
-                <div class="size-10 bg-primary/20 rounded-xl flex items-center justify-center">
-                    <span class="material-symbols-outlined text-primary">confirmation_number</span>
-                </div>
+            class="p-4 border-b border-border-dark flex items-center justify-between bg-neutral-dark/50 backdrop-blur-md sticky top-0 z-10">
+            <div class="flex items-center gap-4">
+                <img src="../img/logo.png" alt="Repuestos Halcón" class="h-10 object-contain" />
                 <div>
                     <h1 id="vendedor-nombre" class="text-sm font-black truncate max-w-[150px]">Cargando...</h1>
                     <p id="sucursal-nombre" class="text-[10px] text-slate-500 uppercase tracking-tighter">SUCURSAL —</p>
@@ -115,6 +113,10 @@
                         class="hidden absolute inset-0 flex items-center justify-center bg-background-dark/80">
                         <div class="loader"></div>
                     </div>
+                </div>
+                <div id="cola-status" class="inline-flex items-center gap-2 bg-neutral-dark px-4 py-1.5 rounded-full border border-border-dark opacity-0 transition-opacity duration-500">
+                    <span class="size-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">En espera: <span id="espera-count" class="text-white">0</span></span>
                 </div>
             </div>
 
@@ -237,6 +239,14 @@
             try {
                 const data = await api('GET', `/turnos/${vendedor.SucursalId}`);
                 document.getElementById('turno-actual').textContent = data.TurnoFormateado;
+                
+                // Actualizar contador de espera
+                const espera = (data.UltimoGenerado || 0) - (data.NumeroActual || 0);
+                const countEl = document.getElementById('espera-count');
+                const statusEl = document.getElementById('cola-status');
+                countEl.textContent = espera > 0 ? espera : 0;
+                statusEl.classList.remove('opacity-0');
+                
             } catch (err) {
                 showToast(err.message, 'error');
             } finally {
@@ -255,11 +265,19 @@
                 document.getElementById('turno-actual').textContent = data.TurnoFormateado;
                 showToast(`Turno ${data.TurnoFormateado} llamado`);
 
+                // Actualizar contador de espera
+                const espera = (data.UltimoGenerado || 0) - (data.NumeroActual || 0);
+                document.getElementById('espera-count').textContent = espera > 0 ? espera : 0;
+
                 // Efecto háptico si aplica
                 if (navigator.vibrate) navigator.vibrate(50);
 
             } catch (err) {
-                showToast(err.message, 'error');
+                if (err.message.includes('cola')) {
+                    showToast("No hay clientes esperando en cola", 'error');
+                } else {
+                    showToast(err.message, 'error');
+                }
             } finally {
                 btn.disabled = false;
                 document.getElementById('turno-loader').classList.add('hidden');

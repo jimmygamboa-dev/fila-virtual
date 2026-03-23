@@ -1,0 +1,16 @@
+{
+  "name": "Kiosco Fila Virtual",
+  "short_name": "Kiosco",
+  "description": "Obtener turno para Fila Virtual",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#1a180e",
+  "theme_color": "#ffd900",
+  "icons": [
+    {
+      "src": "https://fila-virtual.s3.amazonaws.com/monitor/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}

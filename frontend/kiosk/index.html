@@ -4,6 +4,13 @@
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>Kiosco de Turnos - Fila Virtual</title>
+    <meta name="theme-color" content="#ffd900">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Kiosco">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="https://fila-virtual.s3.amazonaws.com/monitor/favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
@@ -68,17 +75,12 @@
 
         <!-- Header -->
         <header class="mb-12">
-            <div class="inline-flex items-center gap-3 bg-neutral-dark/50 px-6 py-3 rounded-2xl border border-white/5 backdrop-blur-sm mb-6">
-                <div class="size-10 bg-primary rounded-xl flex items-center justify-center text-background-dark shadow-lg shadow-primary/20">
-                    <span class="material-symbols-outlined text-2xl font-black">confirmation_number</span>
-                </div>
-                <div class="text-left">
-                    <h1 class="text-xl font-black tracking-tighter uppercase leading-none">Fila Virtual</h1>
-                    <p id="sucursal-nombre" class="text-[10px] font-bold text-slate-500 tracking-widest uppercase">Identificando...</p>
-                </div>
+            <div class="flex flex-col items-center gap-6 mb-6">
+                <img src="../img/logo.png" alt="Repuestos Halcón" class="h-32 object-contain drop-shadow-2xl" />
+                <p id="sucursal-nombre" class="bg-neutral-dark/50 px-4 py-2 rounded-full border border-white/5 text-[10px] font-black text-slate-500 tracking-[0.3em] uppercase">Identificando...</p>
             </div>
-            <h2 class="text-4xl font-black mb-4">Bienvenido</h2>
-            <p class="text-slate-400">Presione el botón para obtener su turno e imprima su ticket.</p>
+            <h2 class="text-4xl font-black mb-4 uppercase tracking-tighter">Bienvenido</h2>
+            <p class="text-slate-400 font-medium tracking-tight">Presione el botón para obtener su turno e imprima su ticket.</p>
         </header>
 
         <!-- Main Action -->
@@ -111,6 +113,27 @@
     <script>
         const API_URL = window.APP_CONFIG?.API_URL || 'https://c07tv3p9hf.execute-api.us-east-1.amazonaws.com/Prod';
         let sucursalId = null;
+        let wakeLock = null;
+
+        // --- Prevención de Bloqueo de Pantalla (Wake Lock) ---
+        const requestWakeLock = async () => {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Pantalla siempre encendida activa');
+                }
+            } catch (err) {
+                console.error(`${err.name}, ${err.message}`);
+            }
+        };
+
+        // Re-solicitar cuando la página vuelva a estar visible
+        document.addEventListener('visibilitychange', async () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') {
+                await requestWakeLock();
+            }
+        });
+        // ---------------------------------------------------
 
         // Identificar sucursal por IP al cargar
         async function identificar() {
@@ -121,6 +144,8 @@
                     sucursalId = json.data.SucursalId;
                     document.getElementById('sucursal-nombre').textContent = json.data.Nombre;
                     document.getElementById('print-sucursal').textContent = json.data.Nombre;
+                    // Activar el bloqueo de pantalla
+                    requestWakeLock();
                 } else {
                     document.getElementById('ip-error').classList.remove('hidden');
                 }
@@ -144,15 +169,70 @@
                 
                 if (json.success) {
                     const data = json.data;
-                    document.getElementById('print-turno').textContent = data.Ticket;
-                    document.getElementById('print-fecha').textContent = new Date().toLocaleString();
+                    const ticketNum = data.Ticket;
+                    const sucursalNom = document.getElementById('sucursal-nombre').textContent;
+                    const fecha = new Date().toLocaleString();
                     
-                    // Disparar impresión
+                    document.getElementById('print-turno').textContent = ticketNum;
+                    document.getElementById('print-fecha').textContent = fecha;
+                    
+                    // Función para generar comandos binarios ESC/POS (El lenguaje nativo de la impresora)
+                    const generateEscPos = (turno, sucursal) => {
+                        const encoder = new TextEncoder();
+                        const init = [0x1B, 0x40]; // Inicializar
+                        const center = [0x1B, 0x61, 0x01]; // Centrar
+                        const boldOn = [0x1B, 0x45, 0x01]; // Negrita On
+                        const bigOn = [0x1B, 0x21, 0x30]; // Texto Gigante (Double Height + Double Width)
+                        const reset = [0x1B, 0x21, 0x00, 0x1B, 0x45, 0x00]; // Reset tamaño y negrita
+                        const feed = [0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A]; // 10 saltos de línea para facilitar el corte manual
+
+                        let parts = [];
+                        parts.push(new Uint8Array(init));
+                        parts.push(new Uint8Array(center));
+                        parts.push(new Uint8Array(boldOn));
+                        // Quitamos acentos para evitar problemas de codificación binaria simple
+                        parts.push(encoder.encode("REPUESTOS HALCON\n"));
+                        parts.push(encoder.encode("--------------------------------\n"));
+                        parts.push(new Uint8Array(reset));
+                        parts.push(encoder.encode(`Sucursal: ${sucursal.normalize("NFD").replace(/[\u0300-\u036f]/g, "")}\n`));
+                        parts.push(encoder.encode(`Fecha: ${new Date().toLocaleString()}\n\n`));
+                        parts.push(encoder.encode("SU TURNO ES:\n\n"));
+                        parts.push(new Uint8Array(bigOn));
+                        parts.push(encoder.encode(`${turno}\n`));
+                        parts.push(new Uint8Array(reset));
+                        parts.push(encoder.encode("\nFavor espere a ser llamado\n"));
+                        parts.push(encoder.encode("en la pantalla de anuncios.\n"));
+                        parts.push(encoder.encode("--------------------------------\n"));
+                        parts.push(encoder.encode("Fila Virtual v4.0\n"));
+                        parts.push(new Uint8Array(feed));
+
+                        // Combinar todas las partes en un solo array de bytes
+                        let totalLength = parts.reduce((acc, curr) => acc + curr.length, 0);
+                        let combined = new Uint8Array(totalLength);
+                        let offset = 0;
+                        for (let part of parts) {
+                            combined.set(part, offset);
+                            offset += part.length;
+                        }
+
+                        // Convertir a Base64
+                        let binary = '';
+                        for (let i = 0; i < combined.byteLength; i++) {
+                            binary += String.fromCharCode(combined[i]);
+                        }
+                        return window.btoa(binary);
+                    };
+
+                    const base64EscPos = generateEscPos(ticketNum, sucursalNom);
+                    
+                    // Enviar binario directo a RawBT
+                    window.location.href = "rawbt:base64," + base64EscPos;
+
+                    // Resetear botón
                     setTimeout(() => {
-                        window.print();
                         btn.disabled = false;
                         btn.classList.remove('opacity-50', 'animate-pulse');
-                    }, 500);
+                    }, 2000);
                 } else {
                     alert("Error: " + json.error);
                     btn.disabled = false;

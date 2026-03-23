@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
         rel="stylesheet" />
+    <link rel="icon" href="./logo.png" type="image/png">
     <script>
         tailwind.config = {
             darkMode: "class",
@@ -48,10 +49,11 @@
         }
 
         .big-number {
-            font-size: 28vw;
-            line-height: 0.7;
+            font-size: 18vw;
+            line-height: 0.9;
             letter-spacing: -0.05em;
             filter: drop-shadow(0 0 40px rgba(255, 217, 0, 0.3));
+            white-space: nowrap;
         }
 
         #audio-overlay {
@@ -101,12 +103,9 @@
         <div class="w-3/5 flex flex-col border-r border-border-dark/50 relative bg-black/20">
             <header class="p-8 flex items-center justify-between">
                 <div class="flex items-center gap-4">
-                    <div class="size-14 bg-primary rounded-2xl flex items-center justify-center text-background-dark shadow-lg shadow-primary/20">
-                        <span class="material-symbols-outlined text-4xl">confirmation_number</span>
-                    </div>
+                    <img src="./logo.png" alt="Auto Repuestos Halcón" class="h-20 object-contain drop-shadow-xl" />
                     <div>
-                        <h1 class="text-3xl font-black tracking-tighter uppercase leading-none">Fila Virtual</h1>
-                        <p id="sucursal-nombre" class="text-sm font-bold text-slate-500 tracking-widest uppercase mt-1">Cargando sucursal...</p>
+                        <h1 id="sucursal-nombre" class="text-2xl font-black text-slate-400 tracking-widest uppercase mt-1">Cargando sucursal...</h1>
                     </div>
                 </div>
             </header>
@@ -142,12 +141,6 @@
 
         <!-- Right Panel: Ventanilla List (Table Style) -->
         <div class="w-2/5 flex flex-col bg-neutral-dark/30">
-            <div class="p-8 border-b border-border-dark/50">
-                <h3 class="text-xl font-black text-slate-400 tracking-widest uppercase flex items-center gap-2">
-                    <span class="material-symbols-outlined text-sm">grid_view</span> OTROS TURNOS
-                </h3>
-            </div>
-            
             <!-- Table Header -->
             <div class="px-8 py-4 border-b border-border-dark/30 flex text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
                 <div class="w-1/5 text-center">Posición</div>

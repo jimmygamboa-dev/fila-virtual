@@ -58,13 +58,16 @@ exports.handler = async (event) => {
         }
 
         if (httpMethod === 'POST' && path.endsWith('/resetear')) {
-            return await resetearTurno(sucursalId);
+            return await generarNuevoTicket(sucursalId);
         }
 
         return response(404, { success: false, error: 'Ruta no encontrada' });
     } catch (err) {
-        console.error('[Turnos] Error:', err);
-        return response(500, { success: false, error: 'Error interno del servidor' });
+        if (err.name === 'QueueEmptyException') {
+            return response(400, { success: false, error: err.message });
+        }
+        console.error(`[Turnos ERROR] ${event.httpMethod} ${event.path}:`, err);
+        return response(500, { success: false, error: err.message || 'Error interno del servidor' });
     }
 };
 
@@ -90,6 +93,7 @@ async function getTurnoActual(sucursalId) {
         success: true,
         data: {
             SucursalId: sucursalId,
+            NombreSucursal: sucursalInfo.Item?.Nombre || `Sucursal ${sucursalId}`,
             NumeroActual: turno.NumeroActual,
             TurnoFormateado: formatearTurno(turno.Prefijo, turno.NumeroActual, limite),
             UltimoGenerado: turno.UltimoGenerado || 0,
@@ -366,6 +370,14 @@ async function incrementoAtomico(sucursalId, hoy, ventanilla, nombreVendedor, li
             const current = await obtenerTurno(sucursalId);
             const prefijo = current.Prefijo || 'A';
             const numeroActual = current.NumeroActual || 0;
+            const ultimoGenerado = current.UltimoGenerado || 0;
+
+            // Validación de Cola: Si el actual ya alcanzó al generado, no hay más turnos.
+            if (numeroActual === ultimoGenerado) {
+                const error = new Error('No hay más turnos en cola esperando.');
+                error.name = 'QueueEmptyException';
+                throw error;
+            }
 
             // Regla de incremento circular usando limite dinámico
             let nuevoNumero = numeroActual + 1;
@@ -423,6 +435,9 @@ async function incrementoAtomico(sucursalId, hoy, ventanilla, nombreVendedor, li
                 return result.Attributes;
             }
         } catch (err) {
+            if (err.name === 'QueueEmptyException') {
+                throw err;
+            }
             if (err.name === 'ConditionalCheckFailedException' && i < MAX_RETRIES - 1) {
                 console.warn(`[Turnos] Colisión detectada en sucursal ${sucursalId}. Reintentando (${i + 1}/${MAX_RETRIES})...`);
                 // Espera aleatoria para reducir probabilidad de nueva colisión

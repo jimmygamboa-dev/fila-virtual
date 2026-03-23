@@ -86,10 +86,23 @@ async function activateAudio() {
         }
         
         log("TTS test...");
-        if (window.speechSynthesis) {
-            const welcomeUtterance = new SpeechSynthesisUtterance("Audio activado");
+        const msgWelcome = "Audio activado";
+        if (window.speechSynthesis && window.speechSynthesis.getVoices().length > 0) {
+            const welcomeUtterance = new SpeechSynthesisUtterance(msgWelcome);
             welcomeUtterance.lang = 'es-MX';
             window.speechSynthesis.speak(welcomeUtterance);
+        } else {
+            log("TTS local no disponible, usando Plan B (Polly) para bienvenida...");
+            const audioUrl = `${API_URL}/tts?text=${encodeURIComponent(msgWelcome)}`;
+            const audio = new Audio(audioUrl);
+            // Nota: En Android TV/Mobile, el primer play DEBE ser directo en el click
+            // Por eso no usamos playPollyTTS aquí, sino un Audio simple para el test inicial
+            const resPolly = await fetch(audioUrl);
+            const jsonPolly = await resPolly.json();
+            if (jsonPolly.audio) {
+                const audioTest = new Audio('data:audio/mp3;base64,' + jsonPolly.audio);
+                audioTest.play().catch(e => log("Error audio test: " + e.message, "error"));
+            }
         }
         log("Desbloqueo enviado.");
     } catch (err) {

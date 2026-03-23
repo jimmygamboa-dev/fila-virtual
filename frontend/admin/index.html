@@ -129,13 +129,10 @@
     <!-- ═══ Sidebar ═══════════════════════════════════════════════════════════ -->
     <aside
       class="w-64 flex-shrink-0 bg-white dark:bg-neutral-dark border-r border-slate-200 dark:border-border-dark flex flex-col">
-      <div class="p-6 flex items-center gap-3">
-        <div class="size-10 bg-primary rounded-lg flex items-center justify-center text-background-dark">
-          <span class="material-symbols-outlined font-bold">confirmation_number</span>
-        </div>
-        <div>
-          <h1 class="text-lg font-bold leading-tight">Fila Virtual</h1>
-          <p class="text-xs text-slate-500 dark:text-slate-400">Admin Central</p>
+      <div class="p-6 flex flex-col items-center gap-3">
+        <img src="../img/logo.png" alt="Repuestos Halcón" class="h-16 object-contain drop-shadow-md" />
+        <div class="text-center">
+          <p class="text-[10px] font-black text-primary uppercase tracking-[0.3em]">Admin Central</p>
         </div>
       </div>
 
@@ -586,6 +583,16 @@
       loading: false,
     };
 
+    window.logoutAdmin = function() {
+      if (confirm('¿Cerrar sesión del panel administrativo?')) {
+        localStorage.removeItem('filaVirtualToken');
+        localStorage.removeItem('filaVirtualVendedor');
+        localStorage.removeItem('cognitoAccessToken');
+        localStorage.removeItem('cognitoIdToken');
+        window.location.href = '../auth/login.html';
+      }
+    };
+
     // ═══════════════════════════════════════════════════════════════════════════
     // API CLIENT
     // ═══════════════════════════════════════════════════════════════════════════
@@ -600,7 +607,16 @@
       if (data) opts.body = JSON.stringify(data);
       const res = await fetch(url, opts);
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+      if (!res.ok) {
+        let errorMsg = json.error || `HTTP ${res.status}`;
+        // Traducción global de errores comunes de Cognito
+        const msgLow = errorMsg.toLowerCase();
+        if (msgLow.includes('password not long enough')) errorMsg = 'La contraseña es demasiado corta (mínimo 8 caracteres).';
+        else if (msgLow.includes('password did not conform') || msgLow.includes('password does not conform')) errorMsg = 'La contraseña no cumple con las reglas (debe incluir mayúsculas, números y/o símbolos).';
+        else if (msgLow.includes('invalid parameter')) errorMsg = 'Parámetros inválidos o incompletos.';
+        else if (msgLow.includes('user already exists') || msgLow.includes('usernameexistsexception')) errorMsg = 'El correo electrónico ya está registrado como vendedor.';
+        throw new Error(errorMsg);
+      }
       return json.data ?? json;
     }
 
